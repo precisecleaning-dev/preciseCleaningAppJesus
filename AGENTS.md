@@ -25,9 +25,12 @@ Run lint and typecheck before declaring any task done.
 
 ## Navigation & Routing
 
-- Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
-- Docs: https://docs.expo.dev/router/introduction.md
+- This app uses **React Navigation** directly (`src/navigation/RootNavigator.tsx`: bottom tabs + a native stack for job detail). It is a small, auth-gated app with no deep links, so Expo Router is not used. Do not migrate without asking.
+- Screens live in `src/screens/`, shared components in `src/components/`.
+
+## Project rules (Precise Crew)
+
+- Read `CLAUDE.md` before changing anything: it explains how this app stays in sync with the Precise Cleaning web app (same Firebase project, same Firestore fields).
 
 ## Building with EAS
 

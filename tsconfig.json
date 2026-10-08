@@ -1,6 +1,14 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "paths": {
+      // ⭐ Firebase Auth publica los tipos de React Native (getReactNativePersistence)
+      //    en un archivo aparte. Metro ya resuelve el bundle RN por la condicion
+      //    "react-native" del package.json; esto solo alinea los TIPOS con ese bundle.
+      "@firebase/auth": ["./node_modules/@firebase/auth/dist/rn/index.rn.d.ts"]
+    }
   }
 }

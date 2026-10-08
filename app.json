@@ -1,25 +1,46 @@
 {
   "expo": {
-    "name": "precise-crew",
+    "name": "Precise Crew",
     "slug": "precise-crew",
+    "scheme": "precisecrew",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.precisecleaningtx.crew",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Precise Crew usa la cámara para tomar las fotos Before/After de cada casa.",
+        "NSPhotoLibraryUsageDescription": "Precise Crew necesita acceso a tus fotos para cargar las fotos Before/After de cada casa.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.precisecleaningtx.crew",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#ffffff",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
+      "permissions": ["android.permission.CAMERA"],
       "predictiveBackGestureEnabled": false
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Precise Crew usa la cámara para tomar las fotos Before/After de cada casa.",
+          "photosPermission": "Precise Crew necesita acceso a tus fotos para cargar las fotos Before/After de cada casa."
+        }
+      ],
+      "expo-localization"
+    ]
   }
 }
