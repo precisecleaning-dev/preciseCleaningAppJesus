@@ -25,6 +25,7 @@ interface CatalogsValue {
   products: CatalogItem[];
   services: CatalogItem[];
   customers: Customer[];
+  customersLoaded: boolean;
   photoConfig: PhotoConfig;
 }
 
@@ -41,6 +42,7 @@ export function CatalogsProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<CatalogItem[]>([]);
   const [services, setServices] = useState<CatalogItem[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customersLoaded, setCustomersLoaded] = useState(false);
   const [photoConfig, setPhotoConfig] = useState<PhotoConfig>(DEFAULT_PHOTO_CONFIG);
 
   useEffect(() => {
@@ -61,7 +63,18 @@ export function CatalogsProvider({ children }: { children: ReactNode }) {
       onSnapshot(collection(db, 'settings_priorities'), (s) => setPriorities(asItems(s.docs)), onErr('settings_priorities')),
       onSnapshot(collection(db, 'settings_products'), (s) => setProducts(asItems(s.docs)), onErr('settings_products')),
       onSnapshot(collection(db, 'settings_services'), (s) => setServices(asItems(s.docs)), onErr('settings_services')),
-      onSnapshot(collection(db, 'customers'), (s) => setCustomers(s.docs.map(mapCustomerDoc)), onErr('customers')),
+      onSnapshot(
+        collection(db, 'customers'),
+        (s) => {
+          if (s.empty && s.metadata.fromCache) return;
+          setCustomers(s.docs.map(mapCustomerDoc));
+          setCustomersLoaded(true);
+        },
+        (err) => {
+          onErr('customers')(err);
+          setCustomersLoaded(true);
+        },
+      ),
       onSnapshot(
         doc(db, 'app_settings', 'photo_config'),
         (s) => setPhotoConfig({ ...DEFAULT_PHOTO_CONFIG, ...(s.exists() ? (s.data() as Partial<PhotoConfig>) : {}) }),
@@ -72,8 +85,8 @@ export function CatalogsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ statuses, statusesLoaded, teams, priorities, products, services, customers, photoConfig }),
-    [statuses, statusesLoaded, teams, priorities, products, services, customers, photoConfig],
+    () => ({ statuses, statusesLoaded, teams, priorities, products, services, customers, customersLoaded, photoConfig }),
+    [statuses, statusesLoaded, teams, priorities, products, services, customers, customersLoaded, photoConfig],
   );
   return <CatalogsContext.Provider value={value}>{children}</CatalogsContext.Provider>;
 }

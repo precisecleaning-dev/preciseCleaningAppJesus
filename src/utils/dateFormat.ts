@@ -89,3 +89,10 @@ export function weekStartOf(t: number): number {
 
 export const money = (n: number | string | null | undefined): string =>
   `$${(Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/** Hora corta "9:04 AM" de un ISO; vacío si no hay fecha válida. */
+export function fmtTime(value: string | null | undefined): string {
+  if (!value) return '';
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}

@@ -1,93 +1,105 @@
 // src/navigation/RootNavigator.tsx
-// Sin sesión → Login. Con sesión pero sin perfil activo → aviso.
-// Con sesión lista → pestañas: Mis casas · Payroll · Perfil.
+// Flujo: (primera vez) Bienvenida → Login → app.
+// Con sesión lista: pila raíz con las pestañas (Inicio · Payroll · Perfil) y,
+// encima, el detalle de casa y las notificaciones. Encabezados propios.
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { NavigationContainer, DefaultTheme, type Theme } from '@react-navigation/native';
+import { DefaultTheme, NavigationContainer, type Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { House, User, Wallet } from 'lucide-react-native';
-import { ActivityIndicator, View } from 'react-native';
-import { ui } from '../components/ui.styles';
+import { useCallback, useEffect, useState } from 'react';
+import LoadingScreen from '../components/LoadingScreen';
+import NotificationToast from '../components/NotificationToast';
+import OfflineBanner from '../components/OfflineBanner';
+import TabBar from '../components/ui/TabBar';
 import { CatalogsProvider } from '../context/CatalogsContext';
 import { JobsProvider } from '../context/JobsContext';
 import { useLanguage } from '../context/LanguageContext';
 import { NetworkProvider } from '../context/NetworkContext';
+import { NotificationsProvider } from '../context/NotificationsContext';
 import { OutboxProvider } from '../context/OutboxContext';
+import { PayrollProvider } from '../context/PayrollContext';
 import { PhotoQueueProvider } from '../context/PhotoQueueContext';
 import { useSession } from '../context/SessionContext';
 import BlockedScreen from '../screens/BlockedScreen';
+import HomeScreen from '../screens/HomeScreen';
 import JobDetailScreen from '../screens/JobDetailScreen';
-import JobsScreen from '../screens/JobsScreen';
 import LoginScreen from '../screens/LoginScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
+import OnboardingScreen from '../screens/OnboardingScreen';
 import PayrollScreen from '../screens/PayrollScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import { colors } from '../theme/tokens';
-import type { JobsStackParams, TabParams } from './types';
+import { navigationRef } from './navigationRef';
+import type { RootStackParams, TabParams } from './types';
 
-const Stack = createNativeStackNavigator<JobsStackParams>();
+const Stack = createNativeStackNavigator<RootStackParams>();
 const Tabs = createBottomTabNavigator<TabParams>();
+const ONBOARDED_KEY = 'pc_crew_onboarded_v1';
 
 const theme: Theme = {
   ...DefaultTheme,
   colors: { ...DefaultTheme.colors, primary: colors.primary, background: colors.bg, card: colors.surface, text: colors.text, border: colors.border },
 };
 
-function JobsStack() {
-  const { t } = useLanguage();
-  return (
-    <Stack.Navigator>
-      <Stack.Screen name="Jobs" component={JobsScreen} options={{ title: t.tabJobs }} />
-      <Stack.Screen name="JobDetail" component={JobDetailScreen} options={{ title: '' }} />
-    </Stack.Navigator>
-  );
-}
+const TAB_ICONS = { Home: House, Payroll: Wallet, Profile: User };
 
 function MainTabs() {
   const { t } = useLanguage();
+  const labels = { Home: t.tabHome, Payroll: t.tabPayroll, Profile: t.tabProfile };
   return (
-    <Tabs.Navigator screenOptions={{ tabBarActiveTintColor: colors.primary, tabBarInactiveTintColor: colors.textSoft }}>
-      <Tabs.Screen
-        name="JobsTab"
-        component={JobsStack}
-        options={{ headerShown: false, title: t.tabJobs, tabBarIcon: ({ color, size }) => <House color={color} size={size} /> }}
-      />
-      <Tabs.Screen
-        name="PayrollTab"
-        component={PayrollScreen}
-        options={{ title: t.payrollTitle, tabBarLabel: t.tabPayroll, tabBarIcon: ({ color, size }) => <Wallet color={color} size={size} /> }}
-      />
-      <Tabs.Screen
-        name="ProfileTab"
-        component={ProfileScreen}
-        options={{ title: t.tabProfile, tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }}
-      />
+    <Tabs.Navigator screenOptions={{ headerShown: false }} tabBar={(props) => <TabBar {...props} icons={TAB_ICONS} labels={labels} />}>
+      <Tabs.Screen name="Home" component={HomeScreen} />
+      <Tabs.Screen name="Payroll" component={PayrollScreen} />
+      <Tabs.Screen name="Profile" component={ProfileScreen} />
     </Tabs.Navigator>
   );
 }
 
-export default function RootNavigator() {
+/** ¿Ya vio la bienvenida en este teléfono? null = todavía leyendo. */
+export function useOnboarded(): [boolean | null, () => void] {
+  const [done, setDone] = useState<boolean | null>(null);
+  useEffect(() => {
+    AsyncStorage.getItem(ONBOARDED_KEY)
+      .then((v) => setDone(v === '1'))
+      .catch(() => setDone(true));
+  }, []);
+  const finish = useCallback(() => {
+    setDone(true);
+    AsyncStorage.setItem(ONBOARDED_KEY, '1').catch(() => undefined);
+  }, []);
+  return [done, finish];
+}
+
+export default function RootNavigator({ onboarded, finishOnboarding }: { onboarded: boolean | null; finishOnboarding: () => void }) {
   const { state } = useSession();
 
-  if (state === 'checking' || state === 'loadingProfile') {
-    return (
-      <View style={ui.center}>
-        <ActivityIndicator color={colors.primary} size="large" />
-      </View>
-    );
-  }
-  if (state === 'signedOut') return <LoginScreen />;
+  // En el arranque la animación de apertura cubre esta espera; después de iniciar sesión se ve LoadingScreen.
+  if (state === 'checking' || state === 'loadingProfile' || onboarded === null) return <LoadingScreen />;
+  if (state === 'signedOut') return onboarded ? <LoginScreen /> : <OnboardingScreen onFinish={finishOnboarding} />;
   if (state === 'noProfile' || state === 'inactive') return <BlockedScreen reason={state} />;
 
   return (
     <NetworkProvider>
       <CatalogsProvider>
         <JobsProvider>
-          <OutboxProvider>
-            <PhotoQueueProvider>
-              <NavigationContainer theme={theme}>
-                <MainTabs />
-              </NavigationContainer>
-            </PhotoQueueProvider>
-          </OutboxProvider>
+          <PayrollProvider>
+            <NotificationsProvider>
+              <OutboxProvider>
+                <PhotoQueueProvider>
+                  <NavigationContainer theme={theme} ref={navigationRef}>
+                    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colors.bg } }}>
+                      <Stack.Screen name="Tabs" component={MainTabs} />
+                      <Stack.Screen name="JobDetail" component={JobDetailScreen} />
+                      <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ animation: 'slide_from_bottom' }} />
+                    </Stack.Navigator>
+                  </NavigationContainer>
+                  <OfflineBanner />
+                  <NotificationToast />
+                </PhotoQueueProvider>
+              </OutboxProvider>
+            </NotificationsProvider>
+          </PayrollProvider>
         </JobsProvider>
       </CatalogsProvider>
     </NetworkProvider>

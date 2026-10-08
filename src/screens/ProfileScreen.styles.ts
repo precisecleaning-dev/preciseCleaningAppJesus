@@ -1,22 +1,20 @@
 import { StyleSheet } from 'react-native';
-import { colors, font, radius, space } from '../theme/tokens';
+import { colors, radius, shadow, space, TAB_BAR_SPACE, type } from '../theme/tokens';
 
 export const styles = StyleSheet.create({
-  content: { padding: space.md, gap: space.md },
-  center: { alignItems: 'center', gap: 2 },
-  gap: { gap: space.sm },
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: space.xs,
-  },
-  avatarText: { fontSize: font.xl, fontWeight: '800', color: colors.primary },
-  name: { fontSize: font.lg, fontWeight: '700', color: colors.text },
-  queueText: { marginLeft: space.xs, fontSize: font.base, color: colors.text, flex: 1 },
-  error: { fontSize: font.xs, color: colors.danger },
-  version: { textAlign: 'center', fontSize: font.xs, color: colors.textSoft },
+  screen: { flex: 1, backgroundColor: colors.bg },
+  content: { paddingBottom: TAB_BAR_SPACE, gap: space.md },
+  flex: { flex: 1, minWidth: 0, gap: 2 },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  ring: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginTop: space.xxs },
+  card: { marginHorizontal: space.md, backgroundColor: colors.surface, borderRadius: radius.xl, padding: space.lg, gap: space.md, ...shadow.card },
+  statsCard: { marginTop: -60, flexDirection: 'row', alignItems: 'center', paddingVertical: space.md, ...shadow.raised },
+  stat: { flex: 1, alignItems: 'center', gap: 4 },
+  statValue: { ...type.number, fontSize: 22, lineHeight: 28, color: colors.text, padding: 0, textAlign: 'center', alignSelf: 'stretch' },
+  vr: { width: 1, alignSelf: 'stretch', backgroundColor: colors.border },
+  cardHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  syncList: { gap: space.xs },
+  signOut: { marginHorizontal: space.md, gap: space.sm, marginTop: space.xs },
 });

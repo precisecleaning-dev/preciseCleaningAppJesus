@@ -1,68 +1,46 @@
 // src/screens/PayrollScreen.tsx
-// ⭐ Payroll del empleado: lee la colección `payroll` (la misma que PayrollView
-//    en la web) filtrada por employeeId en el servidor — cada empleado ve solo
-//    lo suyo, igual que el alcance 'Own' de la web. En vivo: cuando la oficina
-//    registra un pago o marca Paid, se actualiza aquí al instante.
-//    Agrupado por semana (lunes) de la fecha de PAGO, con el mismo orden de
-//    respaldo que la pestaña Nóminas de la web: paymentDate → paidAt → date.
-//    Así el bonus/descuento de un pago queda en la misma semana que sus casas.
-import { collection, documentId, getDocs, onSnapshot, query, where } from 'firebase/firestore';
+// ⭐ Payroll del empleado (solo lectura, en vivo desde la colección `payroll`).
+//    · Encabezado con el saldo por cobrar que "cuenta" hasta su valor.
+//    · Barras de las últimas 6 semanas: pagado (verde) y pendiente (ámbar).
+//    · Registros agrupados por semana de PAGO (paymentDate → paidAt → date,
+//      igual que la pestaña Nóminas de la web).
+import { collection, documentId, getDocs, query, where } from 'firebase/firestore';
+import { Banknote, CircleDollarSign, HandCoins, House, Minus, Plus, Wallet } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, SectionList, Text, View } from 'react-native';
-import StatusPill from '../components/StatusPill';
-import { ui } from '../components/ui.styles';
+import { SectionList, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import WeeklyBars, { type WeekBar } from '../components/WeeklyBars';
+import AnimatedNumber from '../components/ui/AnimatedNumber';
+import StatusScrim from '../components/StatusScrim';
+import AppText from '../components/ui/AppText';
+import Chip from '../components/ui/Chip';
+import EmptyState from '../components/ui/EmptyState';
+import GradientHeader from '../components/ui/GradientHeader';
+import IconBubble from '../components/ui/IconBubble';
+import { JobCardSkeleton } from '../components/ui/Skeleton';
 import { db } from '../config/firebase';
 import { useJobs } from '../context/JobsContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useCurrentUser } from '../context/SessionContext';
-import { colors } from '../theme/tokens';
+import { paymentTime, recordTotal, usePayroll } from '../context/PayrollContext';
+import { fmt } from '../i18n/strings';
+import { gradients, motion } from '../theme/tokens';
 import type { PayrollRecord, Property } from '../types';
-import { dateSortValue, formatDate, money, weekStartOf } from '../utils/dateFormat';
+import { DAY_MS, formatDate, money, weekStartOf } from '../utils/dateFormat';
 import { styles } from './PayrollScreen.styles';
 
-/** Igual que getTotal() de PayrollView: muchos registros no guardan totalAmount. */
-const recordTotal = (r: PayrollRecord): number =>
-  r.totalAmount != null && Number(r.totalAmount) !== 0
-    ? Number(r.totalAmount)
-    : Number(r.baseAmount || 0) + Number(r.extraAmount || 0) - Number(r.discountAmount || 0);
-
-const paymentTime = (r: PayrollRecord): number =>
-  dateSortValue(r.paymentDate) || dateSortValue(r.paidAt) || dateSortValue(r.date);
-
 const LOOKUP_CHUNK = 30; // máximo de valores por consulta 'in' en Firestore
+const WEEKS = 6;
 
 export default function PayrollScreen() {
   const { t } = useLanguage();
-  const user = useCurrentUser();
   const { getJob, clientName } = useJobs();
-  const [records, setRecords] = useState<PayrollRecord[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const { records, loaded } = usePayroll();
   const [extraHouses, setExtraHouses] = useState<Record<string, Property | null>>({});
   const requested = useRef(new Set<string>());
 
-  useEffect(
-    () =>
-      onSnapshot(
-        query(collection(db, 'payroll'), where('employeeId', '==', user.id)),
-        (snap) => {
-          setRecords(snap.docs.map((d) => ({ ...d.data(), id: d.id }) as PayrollRecord));
-          setLoaded(true);
-        },
-        (err) => {
-          console.error('Error cargando payroll:', err);
-          setLoaded(true);
-        },
-      ),
-    [user.id],
-  );
-
-  // Casas pagadas que ya no están en "Mis casas" (otro equipo, reasignadas…):
-  // se leen en lotes de 30 para mostrar su dirección. Si falla (sin señal), se
-  // libera el pedido para reintentar en el próximo cambio.
+  // Casas pagadas que ya no están en "Mis casas": se leen en lotes para mostrar la dirección.
   useEffect(() => {
-    const missing = [
-      ...new Set(records.map((r) => r.propertyId).filter((id) => id && !getJob(id) && !requested.current.has(id))),
-    ];
+    const missing = [...new Set(records.map((r) => r.propertyId).filter((id) => id && !getJob(id) && !requested.current.has(id)))];
     for (let i = 0; i < missing.length; i += LOOKUP_CHUNK) {
       const chunk = missing.slice(i, i + LOOKUP_CHUNK);
       chunk.forEach((id) => requested.current.add(id));
@@ -79,9 +57,10 @@ export default function PayrollScreen() {
     }
   }, [records, getJob]);
 
-  const { sections, totalPending, paidThisMonth } = useMemo(() => {
+  const { sections, totalPending, paidThisMonth, bars } = useMemo(() => {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const thisWeek = weekStartOf(now.getTime());
     let pending = 0;
     let paidMonth = 0;
     const byWeek = new Map<number, PayrollRecord[]>();
@@ -89,97 +68,143 @@ export default function PayrollScreen() {
       const total = recordTotal(r);
       if (r.status === 'Paid') {
         if (paymentTime(r) >= monthStart) paidMonth += total;
-      } else {
-        pending += total;
-      }
+      } else pending += total;
       const tp = paymentTime(r);
       const wk = tp ? weekStartOf(tp) : 0;
       byWeek.set(wk, [...(byWeek.get(wk) || []), r]);
     });
+    const weekBars: WeekBar[] = Array.from({ length: WEEKS }, (_, i) => {
+      const wk = weekStartOf(thisWeek - (WEEKS - 1 - i) * 7 * DAY_MS);
+      const recs = byWeek.get(wk) || [];
+      return {
+        key: String(wk),
+        label: formatDate(wk).slice(0, 5),
+        paid: recs.filter((r) => r.status === 'Paid').reduce((s, r) => s + recordTotal(r), 0),
+        pending: recs.filter((r) => r.status !== 'Paid').reduce((s, r) => s + recordTotal(r), 0),
+      };
+    });
     const secs = [...byWeek.entries()]
-      // Semanas más recientes arriba; los registros sin fecha al final.
       .sort((a, b) => (b[0] || -Infinity) - (a[0] || -Infinity))
       .map(([wk, data]) => ({
         key: String(wk),
-        title: wk ? `${t.week} ${formatDate(wk)}` : t.noDate,
+        title: wk ? fmt(t.week, { date: formatDate(wk) }) : t.noDate,
         total: data.reduce((s, r) => s + recordTotal(r), 0),
         data: data.sort((a, b) => paymentTime(b) - paymentTime(a)),
       }));
-    return { sections: secs, totalPending: pending, paidThisMonth: paidMonth };
+    return { sections: secs, totalPending: pending, paidThisMonth: paidMonth, bars: weekBars };
   }, [records, t]);
 
   const houseLabel = (r: PayrollRecord): string => {
-    if (!r.propertyId) return r.extraNote || r.discountNote || '—';
+    if (!r.propertyId) return r.extraNote || r.discountNote || t.adjustment;
     const h = getJob(r.propertyId) || extraHouses[r.propertyId];
     if (!h) return t.house;
     return h.address ? `${h.address} · ${clientName(h)}` : clientName(h);
   };
 
+  const header = (
+    <View>
+      <GradientHeader overlap={60}>
+        <AppText variant="h1" tone="inverse">
+          {t.payrollTitle}
+        </AppText>
+        <View style={styles.balanceRow}>
+          <View style={styles.flex}>
+            <AppText variant="label" tone="inverseMuted">
+              {t.totalPending}
+            </AppText>
+            <AnimatedNumber value={totalPending} style={styles.balance} />
+          </View>
+          <View style={styles.monthTile}>
+            <CircleDollarSign size={18} color="#FFFFFF" />
+            <AppText variant="caption" tone="inverseMuted">
+              {t.totalPaidMonth}
+            </AppText>
+            <AnimatedNumber value={paidThisMonth} style={styles.monthValue} />
+          </View>
+        </View>
+      </GradientHeader>
+      <Animated.View entering={FadeInDown.springify().damping(16)} style={styles.chartCard}>
+        <View style={styles.chartHead}>
+          <AppText variant="title">{t.lastWeeks}</AppText>
+          <View style={styles.legend}>
+            <Chip label={t.paid} accent="mint" />
+            <Chip label={t.pending} accent="amber" />
+          </View>
+        </View>
+        <WeeklyBars bars={bars} />
+      </Animated.View>
+    </View>
+  );
+
   if (!loaded) {
     return (
-      <View style={ui.center}>
-        <ActivityIndicator color={colors.primary} size="large" />
+      <View style={styles.screen}>
+        {header}
+        <View style={styles.skeletons}>
+          <JobCardSkeleton />
+          <JobCardSkeleton />
+        </View>
       </View>
     );
   }
 
   return (
+    <View style={styles.screen}>
+    <StatusScrim />
     <SectionList
-      style={ui.screen}
-      contentContainerStyle={ui.listContent}
+      style={styles.screen}
+      contentContainerStyle={styles.list}
       sections={sections}
       keyExtractor={(r) => r.id}
       stickySectionHeadersEnabled={false}
-      ListHeaderComponent={
-        <View style={styles.summary}>
-          <View style={[ui.card, styles.summaryCard]}>
-            <Text style={ui.muted}>{t.totalPending}</Text>
-            <Text style={[styles.summaryValue, styles.pendingValue]}>{money(totalPending)}</Text>
-          </View>
-          <View style={[ui.card, styles.summaryCard]}>
-            <Text style={ui.muted}>{t.totalPaidMonth}</Text>
-            <Text style={[styles.summaryValue, styles.paidValue]}>{money(paidThisMonth)}</Text>
-          </View>
-        </View>
+      showsVerticalScrollIndicator={false}
+      ListHeaderComponent={header}
+      ListEmptyComponent={
+        <EmptyState
+          icon={Wallet}
+          gradient={gradients.mint}
+          orbits={[{ icon: Banknote, accent: 'amber' }, { icon: HandCoins, accent: 'violet' }, { icon: CircleDollarSign, accent: 'sky' }]}
+          title={t.noPayrollTitle}
+          body={t.noPayrollBody}
+        />
       }
-      ListEmptyComponent={<Text style={ui.empty}>{t.noPayroll}</Text>}
       renderSectionHeader={({ section }) => (
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{section.title}</Text>
-          <Text style={styles.sectionTotal}>{money(section.total)}</Text>
+          <AppText variant="label" tone="muted">
+            {section.title}
+          </AppText>
+          <AppText variant="bodyStrong">{money(section.total)}</AppText>
         </View>
       )}
-      renderItem={({ item: r }) => (
-        <View style={[ui.card, styles.item]}>
-          <View style={styles.itemTop}>
-            <Text style={styles.house} numberOfLines={2}>
-              {houseLabel(r)}
-            </Text>
-            <Text style={styles.amount}>{money(recordTotal(r))}</Text>
-          </View>
-          <View style={styles.itemBottom}>
-            <Text style={ui.muted}>{formatDate(r.date)}</Text>
-            <StatusPill label={r.status === 'Paid' ? t.paid : t.pending} tone={r.status === 'Paid' ? 'done' : 'warning'} />
-          </View>
-          {Number(r.extraAmount) > 0 && (
-            <Text style={styles.extra}>
-              + {t.extra} {money(r.extraAmount)}
-              {r.extraNote ? ` · ${r.extraNote}` : ''}
-            </Text>
-          )}
-          {Number(r.discountAmount) > 0 && (
-            <Text style={styles.discount}>
-              − {t.discount} {money(r.discountAmount)}
-              {r.discountNote ? ` · ${r.discountNote}` : ''}
-            </Text>
-          )}
-          {r.status === 'Paid' && (r.paidAt || r.paymentDate) && (
-            <Text style={ui.muted}>
-              {t.paidOn} {formatDate(r.paidAt || r.paymentDate)}
-            </Text>
-          )}
-        </View>
-      )}
+      renderItem={({ item: r, index }) => {
+        const paid = r.status === 'Paid';
+        return (
+          <Animated.View entering={FadeInDown.delay(Math.min(index, 6) * motion.stagger).springify().damping(18)} style={styles.item}>
+            <View style={styles.row}>
+              <IconBubble icon={r.propertyId ? House : HandCoins} accent={paid ? 'mint' : 'amber'} />
+              <View style={styles.flex}>
+                <AppText variant="bodyStrong" numberOfLines={2}>
+                  {houseLabel(r)}
+                </AppText>
+                <AppText variant="caption" tone="muted">
+                  {paid && (r.paidAt || r.paymentDate) ? fmt(t.paidOn, { date: formatDate(r.paidAt || r.paymentDate) }) : formatDate(r.date)}
+                </AppText>
+              </View>
+              <View style={styles.amountCol}>
+                <AppText variant="h2">{money(recordTotal(r))}</AppText>
+                <Chip label={paid ? t.paid : t.pending} accent={paid ? 'mint' : 'amber'} solid={paid} />
+              </View>
+            </View>
+            {(Number(r.extraAmount) > 0 || Number(r.discountAmount) > 0) && (
+              <View style={styles.adjustments}>
+                {Number(r.extraAmount) > 0 && <Chip icon={Plus} accent="mint" label={`${t.extra} ${money(r.extraAmount)}${r.extraNote ? ` · ${r.extraNote}` : ''}`} />}
+                {Number(r.discountAmount) > 0 && <Chip icon={Minus} accent="coral" label={`${t.discount} ${money(r.discountAmount)}${r.discountNote ? ` · ${r.discountNote}` : ''}`} />}
+              </View>
+            )}
+          </Animated.View>
+        );
+      }}
     />
+    </View>
   );
 }

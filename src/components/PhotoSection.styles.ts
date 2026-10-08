@@ -1,34 +1,27 @@
 import { StyleSheet } from 'react-native';
-import { colors, font, radius, space } from '../theme/tokens';
+import { accents, colors, radius, space } from '../theme/tokens';
 
-const THUMB = 96;
+const THUMB = 92;
 
 export const styles = StyleSheet.create({
   wrap: { gap: space.sm },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { fontSize: font.base, fontWeight: '700', color: colors.text },
-  pendingTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: colors.warningSoft,
-    borderRadius: radius.pill,
-    paddingHorizontal: space.sm,
-    paddingVertical: 2,
-  },
-  pendingText: { fontSize: font.xs, fontWeight: '700', color: colors.warning },
-  empty: { fontSize: font.sm, color: colors.textSoft, paddingVertical: space.sm },
-  strip: { gap: space.xs },
-  thumb: { width: THUMB, height: THUMB, borderRadius: radius.sm, backgroundColor: colors.border },
+  header: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  titles: { flex: 1, gap: 1 },
+  sub: { color: accents.mint.ink },
+  subPending: { color: accents.amber.ink },
+  strip: { gap: space.xs, paddingVertical: 2 },
+  thumb: { width: THUMB, height: THUMB, borderRadius: radius.md, backgroundColor: colors.border },
   thumbOverlay: {
     ...StyleSheet.absoluteFill,
-    borderRadius: radius.sm,
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(11, 27, 51, 0.5)',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
   },
-  thumbProgress: { color: colors.white, fontSize: font.xs, fontWeight: '700' },
-  actions: { flexDirection: 'row', gap: space.sm },
-  actionItem: { flex: 1 },
+  addTile: { width: THUMB, height: THUMB, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', gap: 4, borderWidth: 1.5, borderStyle: 'dashed' },
+  addCamera: { backgroundColor: accents.violet.soft, borderColor: accents.violet.solid },
+  addGallery: { backgroundColor: accents.sky.soft, borderColor: accents.sky.solid },
+  addCamText: { color: accents.violet.ink },
+  addGalText: { color: accents.sky.ink },
 });

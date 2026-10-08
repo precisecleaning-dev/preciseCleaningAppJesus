@@ -1,23 +1,18 @@
 import { StyleSheet } from 'react-native';
-import { colors, font, radius, space } from '../theme/tokens';
+import { accents, colors, radius, shadow, space } from '../theme/tokens';
 
 export const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: space.md,
-    gap: space.xs,
-  },
-  cardActive: { borderColor: colors.primary, borderLeftWidth: 4 },
-  pressed: { opacity: 0.9 },
-  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
-  client: { flex: 1, fontSize: font.md, fontWeight: '700', color: colors.text },
-  line: { flexDirection: 'row', alignItems: 'flex-start', gap: space.xs },
-  address: { flex: 1, fontSize: font.base, color: colors.text },
-  meta: { flex: 1, fontSize: font.sm, color: colors.textMuted },
-  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginTop: space.xxs, alignItems: 'center' },
-  photoCount: { flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 'auto' },
-  photoCountText: { fontSize: font.xs, color: colors.textMuted, fontWeight: '600' },
+  // Sin overflow:hidden (en iOS anularía la sombra): la franja lleva sus propias esquinas.
+  card: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: radius.lg, ...shadow.card },
+  stripe: { width: 6, borderTopLeftRadius: radius.lg, borderBottomLeftRadius: radius.lg },
+  body: { flex: 1, padding: space.md, gap: space.sm },
+  top: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  titles: { flex: 1, gap: 2, minWidth: 0 },
+  line: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  flex: { flex: 1 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
+  footer: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, alignItems: 'center' },
+  photos: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto' },
+  photosText: { color: colors.textMuted },
+  photosPending: { color: accents.amber.ink },
 });

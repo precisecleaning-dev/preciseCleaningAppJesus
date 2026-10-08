@@ -2,23 +2,27 @@
 // ⭐ Hilo de notas, mismo modelo que NoteThread.tsx de la web: cada entrada de
 //    `notesHistory` del campo es un mensaje; si la casa tiene texto pero no
 //    historial (casas viejas / importadas de AppSheet), ese texto se muestra
-//    como un primer mensaje.
+//    como un primer mensaje. Los mensajes propios van a la derecha en azul;
+//    los de la oficina a la izquierda en verde azulado. Los pendientes (sin
+//    señal) se ven con borde punteado hasta que llegan.
+import { LinearGradient } from 'expo-linear-gradient';
 import { Send } from 'lucide-react-native';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, TextInput, View } from 'react-native';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useLanguage } from '../context/LanguageContext';
-import { colors } from '../theme/tokens';
+import { colors, gradients } from '../theme/tokens';
 import type { NoteHistoryEntry } from '../types';
 import { formatDateTime } from '../utils/dateFormat';
 import { styles } from './NoteThread.styles';
-import { ui } from './ui.styles';
+import AppText from './ui/AppText';
+import PressableScale from './ui/PressableScale';
 
 interface Props {
   title: string;
   field: NoteHistoryEntry['field'];
   legacyText: string;
   history: NoteHistoryEntry[];
-  /** Notas del empleado aún en la cola (sin señal). */
   pending?: NoteHistoryEntry[];
   myEmail: string;
   canWrite: boolean;
@@ -41,7 +45,6 @@ export default function NoteThread({ title, field, legacyText, history, pending 
       : legacyText.trim()
         ? [{ key: 'legacy', text: legacyText.trim(), mine: false, author: '', at: '', pending: false }]
         : [];
-  // Una nota pendiente que ya llegó al servidor aparece en `history`: no se repite.
   const savedKeys = new Set(entries.map((e) => `${e.at}|${e.text}`));
   const messages = [
     ...saved,
@@ -61,37 +64,38 @@ export default function NoteThread({ title, field, legacyText, history, pending 
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>{title}</Text>
-      {messages.length === 0 && <Text style={ui.muted}>—</Text>}
+      <AppText variant="title">{title}</AppText>
+      {messages.length === 0 && (
+        <AppText variant="small" tone="soft">
+          —
+        </AppText>
+      )}
       {messages.map((m) => (
-        <View key={m.key} style={[styles.bubble, m.mine && styles.bubbleMine, m.pending && styles.bubblePending]}>
-          <Text style={styles.text}>{m.text}</Text>
-          {(m.author || m.at) && (
-            <Text style={styles.meta}>
+        <Animated.View key={m.key} entering={FadeInUp.springify().damping(18)} style={[styles.bubble, m.mine ? styles.mine : styles.theirs, m.pending && styles.pending]}>
+          <AppText variant="body">{m.text}</AppText>
+          {(m.author || m.at || m.pending) && (
+            <AppText variant="caption" tone="muted">
               {[m.author, formatDateTime(m.at), m.pending ? t.pendingSync : ''].filter(Boolean).join(' · ')}
-            </Text>
+            </AppText>
           )}
-        </View>
+        </Animated.View>
       ))}
       {canWrite && onSend && (
         <View style={styles.composer}>
           <TextInput
-            style={[ui.input, styles.input]}
+            style={styles.input}
             value={draft}
             onChangeText={setDraft}
             placeholder={t.writeNote}
             placeholderTextColor={colors.textSoft}
             multiline
+            accessibilityLabel={t.writeNote}
           />
-          <Pressable
-            onPress={send}
-            disabled={sending || !draft.trim()}
-            accessibilityRole="button"
-            accessibilityLabel={t.send}
-            style={({ pressed }) => [styles.sendBtn, (sending || !draft.trim()) && styles.sendDisabled, pressed && styles.sendPressed]}
-          >
-            {sending ? <ActivityIndicator color={colors.white} /> : <Send size={20} color={colors.white} />}
-          </Pressable>
+          <PressableScale onPress={send} disabled={sending || !draft.trim()} accessibilityLabel={t.send} scaleTo={0.88} haptic="medium" style={(sending || !draft.trim()) && styles.sendDisabled}>
+            <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.sendBtn}>
+              {sending ? <ActivityIndicator color={colors.white} /> : <Send size={20} color={colors.white} />}
+            </LinearGradient>
+          </PressableScale>
         </View>
       )}
     </View>

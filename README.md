@@ -1,4 +1,4 @@
-# Precise Crew — app móvil de empleados (Android + iOS)
+# Precise Cleaning — app del equipo (Android + iOS)
 
 App en **React Native + Expo** conectada al mismo Firebase que la app web de Precise Cleaning.
 La oficina asigna la casa en la web → el empleado la ve al instante en el teléfono → la trabaja
@@ -6,6 +6,10 @@ La oficina asigna la casa en la web → el empleado la ve al instante en el tel�
 El empleado también ve su **Payroll** (pendiente / pagado, por semana).
 
 ## Qué hace
+
+- **Apertura animada** con la marca y **bienvenida** de 3 pasos la primera vez.
+- **Notificaciones**: campana con contador y aviso flotante cuando te asignan una casa,
+  cambia el horario o el status, la oficina deja una nota o se registra/paga tu payroll.
 
 - **Login** con el mismo correo y contraseña de la web (las cuentas se crean en System Users).
 - **Mis casas**: Hoy (incluye en curso y atrasadas recientes) · Próximas · Historial.
@@ -55,8 +59,8 @@ src/config/firebase.ts       Mismo proyecto Firebase que la web (bdprecise-2d4bc
 src/context/                 Sesión, catálogos, casas, red, cola de fotos, cola de cambios, idioma
 src/services/                Escrituras a Firestore/Storage (mismos campos que la web)
 src/screens/                 Login, Mis casas, Detalle, Payroll, Perfil
-src/components/              UI reutilizable (cada uno con su .styles.ts)
-src/theme/tokens.ts          Paleta y medidas (slate/blue, #3b82f6)
+src/components/              Piezas de pantalla; src/components/ui/ = sistema de diseño
+src/theme/tokens.ts          Paleta con significado, tipografía, sombras y movimiento
 src/i18n/strings.ts          Textos ES / EN
 ```
 Lee `CLAUDE.md` para el contrato de datos con la web y las convenciones del código.

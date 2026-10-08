@@ -1,10 +1,11 @@
-export type JobsStackParams = {
-  Jobs: undefined;
+export type RootStackParams = {
+  Tabs: undefined;
   JobDetail: { jobId: string };
+  Notifications: undefined;
 };
 
 export type TabParams = {
-  JobsTab: undefined;
-  PayrollTab: undefined;
-  ProfileTab: undefined;
+  Home: undefined;
+  Payroll: undefined;
+  Profile: undefined;
 };

@@ -1,77 +1,82 @@
 // src/components/JobCard.tsx
-import { Camera, ChevronRight, Clock, MapPin } from 'lucide-react-native';
-import { Pressable, Text, View } from 'react-native';
+// ⭐ Tarjeta de casa. Franja izquierda con el color del status que configuró la
+//    oficina, burbuja con el color del estado de trabajo, y chips de horario,
+//    servicio y fotos. Memoizada: la lista no se re-dibuja entera en cada cambio.
+import { Camera, ChevronRight, Clock, MapPin, Sparkles } from 'lucide-react-native';
+import { memo } from 'react';
+import { View } from 'react-native';
 import { useJobs } from '../context/JobsContext';
 import { useLanguage } from '../context/LanguageContext';
-import { usePhotoQueue } from '../context/PhotoQueueContext';
 import { useSession } from '../context/SessionContext';
-import { colors } from '../theme/tokens';
+import { accents, colors } from '../theme/tokens';
 import type { Property } from '../types';
+import { safeColor } from '../utils/color';
 import { formatDate } from '../utils/dateFormat';
-import { isOverdue, workStateOf } from '../utils/jobState';
+import { jobVisual } from '../utils/jobVisual';
 import { styles } from './JobCard.styles';
-import StatusPill from './StatusPill';
+import AppText from './ui/AppText';
+import Chip from './ui/Chip';
+import IconBubble from './ui/IconBubble';
+import PressableScale from './ui/PressableScale';
 
 interface Props {
   job: Property;
+  pending: number;
   onPress: (job: Property) => void;
 }
 
-export default function JobCard({ job, onPress }: Props) {
+function JobCard({ job, pending, onPress }: Props) {
   const { t } = useLanguage();
   const { clientName, serviceName, statusOf } = useJobs();
   const { isElementVisible } = useSession();
-  const { pendingFor } = usePhotoQueue();
-  const state = workStateOf(job);
+  const v = jobVisual(job, t);
   const status = statusOf(job);
-  const pending = pendingFor(job.id).length;
+  const stripe = safeColor(status?.color, accents[v.accent].solid);
   const photos = (job.beforePhotos?.length || 0) + (job.afterPhotos?.length || 0);
   const time = [job.timeIn, job.timeOut].filter(Boolean).join(' – ');
+  const client = clientName(job);
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={() => onPress(job)}
-      style={({ pressed }) => [styles.card, state === 'inProgress' && styles.cardActive, pressed && styles.pressed]}
-    >
-      <View style={styles.top}>
-        <Text style={styles.client} numberOfLines={1}>
-          {clientName(job)}
-        </Text>
-        <ChevronRight size={20} color={colors.textSoft} />
-      </View>
-
-      <View style={styles.line}>
-        <MapPin size={15} color={colors.textMuted} />
-        <Text style={styles.address} numberOfLines={2}>
-          {job.address || '—'}
-        </Text>
-      </View>
-
-      <View style={styles.line}>
-        <Clock size={15} color={colors.textMuted} />
-        <Text style={styles.meta}>
-          {formatDate(job.scheduleDate || job.receiveDate) || t.noDate}
-          {time && isElementVisible('timeIn') ? ` · ${time}` : ''}
-          {isElementVisible('serviceId') ? ` · ${serviceName(job)}` : ''}
-        </Text>
-      </View>
-
-      <View style={styles.pills}>
-        {isElementVisible('statusId') && status && <StatusPill label={status.name} color={status.color} />}
-        {state === 'inProgress' && <StatusPill label={t.inProgress} tone="progress" />}
-        {state === 'finished' && <StatusPill label={t.finished} tone="done" />}
-        {isOverdue(job) && <StatusPill label={t.overdue} tone="warning" />}
-        {(photos > 0 || pending > 0) && (
-          <View style={styles.photoCount}>
-            <Camera size={14} color={colors.textMuted} />
-            <Text style={styles.photoCountText}>
-              {photos}
-              {pending > 0 ? ` (+${pending})` : ''}
-            </Text>
+    <PressableScale onPress={() => onPress(job)} style={styles.card} scaleTo={0.97} accessibilityLabel={`${client}, ${job.address}, ${v.label}`}>
+      <View style={[styles.stripe, { backgroundColor: stripe }]} />
+      <View style={styles.body}>
+        <View style={styles.top}>
+          <IconBubble icon={v.icon} accent={v.accent} />
+          <View style={styles.titles}>
+            <AppText variant="title" numberOfLines={1}>
+              {client}
+            </AppText>
+            <View style={styles.line}>
+              <MapPin size={13} color={colors.textMuted} />
+              <AppText variant="small" tone="muted" numberOfLines={1} style={styles.flex}>
+                {job.address || '—'}
+              </AppText>
+            </View>
           </View>
-        )}
+          <ChevronRight size={20} color={colors.textSoft} />
+        </View>
+
+        <View style={styles.chips}>
+          <Chip icon={Clock} accent="sky" label={[formatDate(job.scheduleDate || job.receiveDate) || t.noDate, isElementVisible('timeIn') ? time : ''].filter(Boolean).join(' · ')} />
+          {isElementVisible('serviceId') && <Chip icon={Sparkles} accent="teal" label={serviceName(job)} />}
+        </View>
+
+        <View style={styles.footer}>
+          {isElementVisible('statusId') && status && <Chip label={status.name} color={status.color} />}
+          <Chip label={v.label} accent={v.accent} solid={v.accent !== 'sky'} />
+          {(photos > 0 || pending > 0) && (
+            <View style={styles.photos}>
+              <Camera size={14} color={pending > 0 ? accents.amber.ink : colors.textMuted} />
+              <AppText variant="caption" style={pending > 0 ? styles.photosPending : styles.photosText}>
+                {photos}
+                {pending > 0 ? ` +${pending}` : ''}
+              </AppText>
+            </View>
+          )}
+        </View>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
+
+export default memo(JobCard);

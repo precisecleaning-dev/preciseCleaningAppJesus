@@ -17,6 +17,8 @@ import { useSession } from './SessionContext';
 interface JobsValue {
   jobs: Property[];
   jobsLoaded: boolean;
+  /** Todas las consultas (asignadas, equipo, statuses) ya respondieron. */
+  settled: boolean;
   getJob: (id: string) => Property | undefined;
   clientName: (p: Property) => string;
   serviceName: (p: Property) => string;
@@ -32,8 +34,8 @@ const EMPTY: Property[] = [];
 const toProps = (snap: QuerySnapshot) => snap.docs.map((d) => ({ ...d.data(), id: d.id }) as Property);
 
 export function JobsProvider({ children }: { children: ReactNode }) {
-  const { user, isSuperAdmin, housesPermission, isElementVisible } = useSession();
-  const { statuses, statusesLoaded, teams, customers, products, services } = useCatalogs();
+  const { user, isSuperAdmin, housesPermission, isElementVisible, configLoaded } = useSession();
+  const { statuses, statusesLoaded, teams, customers, customersLoaded, products, services } = useCatalogs();
   // Cada resultado se guarda con la clave para la que se pidió (usuario /
   // equipo): si cambia la clave, el resultado viejo se ignora solo.
   const [assignedRes, setAssignedRes] = useState<{ key: string; list: Property[] } | null>(null);
@@ -65,14 +67,22 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     return onSnapshot(
       query(collection(db, 'properties'), where('teamId', 'in', teamKeys)),
       (snap) => setTeamRes({ key: teamKeysStr, list: toProps(snap) }),
-      (err) => console.error('Error cargando casas del equipo:', err),
+      (err) => {
+        console.error('Error cargando casas del equipo:', err);
+        setTeamRes({ key: teamKeysStr, list: [] });
+      },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- teamKeysStr representa teamKeys
   }, [teamKeysStr]);
 
   const assignedLoaded = !!userId && assignedRes?.key === userId;
   const assigned = assignedLoaded ? assignedRes.list : EMPTY;
-  const byTeam = teamKeysStr && teamRes?.key === teamKeysStr ? teamRes.list : EMPTY;
+  const teamLoaded = !teamKeysStr || teamRes?.key === teamKeysStr;
+  const byTeam = teamKeysStr && teamLoaded && teamRes ? teamRes.list : EMPTY;
+  // "Asentado": ya llegaron TODAS las fuentes. Las notificaciones solo comparan
+  // en este estado; si no, una casa del equipo que llega un segundo después
+  // parecería "recién asignada".
+  const settled = assignedLoaded && teamLoaded && statusesLoaded && configLoaded && customersLoaded;
 
   const value = useMemo<JobsValue>(() => {
     const statusOf = (p: Property) => findRelation(statuses, p.statusId);
@@ -99,6 +109,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     return {
       jobs,
       jobsLoaded: assignedLoaded,
+      settled,
       getJob: (id) => merged.get(id),
       clientName,
       serviceName: (p) => {
@@ -108,7 +119,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       statusOf,
       logLabel: (p) => (p.address ? `${clientName(p)} — ${p.address}` : clientName(p)),
     };
-  }, [assigned, byTeam, assignedLoaded, statuses, statusesLoaded, customers, products, services, isSuperAdmin, housesPermission, isElementVisible]);
+  }, [assigned, byTeam, assignedLoaded, settled, statuses, statusesLoaded, customers, products, services, isSuperAdmin, housesPermission, isElementVisible]);
 
   return <JobsContext.Provider value={value}>{children}</JobsContext.Provider>;
 }

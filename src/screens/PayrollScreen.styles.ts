@@ -1,26 +1,21 @@
 import { StyleSheet } from 'react-native';
-import { colors, font, space } from '../theme/tokens';
+import { colors, radius, shadow, space, TAB_BAR_SPACE, type } from '../theme/tokens';
 
 export const styles = StyleSheet.create({
-  summary: { flexDirection: 'row', gap: space.sm, marginBottom: space.xs },
-  summaryCard: { flex: 1, gap: 2 },
-  summaryValue: { fontSize: font.xl, fontWeight: '800' },
-  pendingValue: { color: colors.warning },
-  paidValue: { color: colors.success },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: space.sm,
-    paddingHorizontal: space.xxs,
-  },
-  sectionTitle: { fontSize: font.sm, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' },
-  sectionTotal: { fontSize: font.sm, fontWeight: '700', color: colors.text },
-  item: { gap: space.xxs },
-  itemTop: { flexDirection: 'row', justifyContent: 'space-between', gap: space.sm },
-  itemBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  house: { flex: 1, fontSize: font.base, fontWeight: '600', color: colors.text },
-  amount: { fontSize: font.md, fontWeight: '800', color: colors.text },
-  extra: { fontSize: font.sm, color: colors.success },
-  discount: { fontSize: font.sm, color: colors.danger },
+  screen: { flex: 1, backgroundColor: colors.bg },
+  list: { paddingBottom: TAB_BAR_SPACE },
+  flex: { flex: 1, minWidth: 0 },
+  balanceRow: { gap: space.sm },
+  balance: { ...type.number, fontSize: 38, lineHeight: 46, color: colors.white, padding: 0, alignSelf: 'stretch' },
+  monthTile: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', backgroundColor: colors.glass, borderWidth: 1, borderColor: colors.glassBorder, borderRadius: radius.pill, paddingVertical: space.xs, paddingHorizontal: space.md, gap: space.xs },
+  monthValue: { ...type.number, fontSize: 16, lineHeight: 20, color: colors.white, padding: 0, minWidth: 90 },
+  chartCard: { marginTop: -48, marginHorizontal: space.md, backgroundColor: colors.surface, borderRadius: radius.xl, padding: space.lg, gap: space.md, ...shadow.raised },
+  chartHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm, flexWrap: 'wrap' },
+  legend: { flexDirection: 'row', gap: space.xs },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.xs },
+  item: { marginHorizontal: space.md, marginBottom: space.sm, backgroundColor: colors.surface, borderRadius: radius.lg, padding: space.md, gap: space.sm, ...shadow.card },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  amountCol: { alignItems: 'flex-end', gap: 4 },
+  adjustments: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
+  skeletons: { padding: space.md, gap: space.sm },
 });

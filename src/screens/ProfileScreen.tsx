@@ -1,49 +1,105 @@
 // src/screens/ProfileScreen.tsx
+// Perfil: avatar con anillo de la marca, rol y equipo, tres cifras del trabajo,
+// idioma, estado de sincronización (fotos y cambios pendientes) y cerrar sesión.
 import Constants from 'expo-constants';
-import { CloudUpload, LogOut } from 'lucide-react-native';
-import { ScrollView, Text, View } from 'react-native';
-import ActionButton from '../components/ActionButton';
-import Segmented from '../components/Segmented';
-import { ui } from '../components/ui.styles';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Camera, CircleCheckBig, CloudCheck, CloudUpload, House, Languages, LogOut, RefreshCw, type LucideIcon } from 'lucide-react-native';
+import { ScrollView, View } from 'react-native';
+import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
+import AnimatedNumber from '../components/ui/AnimatedNumber';
+import StatusScrim from '../components/StatusScrim';
+import AppText from '../components/ui/AppText';
+import Button from '../components/ui/Button';
+import Chip from '../components/ui/Chip';
+import GradientHeader from '../components/ui/GradientHeader';
+import IconBubble from '../components/ui/IconBubble';
+import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { useCatalogs } from '../context/CatalogsContext';
+import { useJobs } from '../context/JobsContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useOutbox } from '../context/OutboxContext';
 import { usePhotoQueue } from '../context/PhotoQueueContext';
 import { useCurrentUser, useSession } from '../context/SessionContext';
-import { colors } from '../theme/tokens';
-import type { Lang } from '../i18n/strings';
+import { fmt, type Lang } from '../i18n/strings';
+import { colors, gradients, type AccentName } from '../theme/tokens';
+import { workStateOf } from '../utils/jobState';
 import { findRelation } from '../utils/relations';
 import { styles } from './ProfileScreen.styles';
+
+function Stat({ icon, accent, value, label }: { icon: LucideIcon; accent: AccentName; value: number; label: string }) {
+  return (
+    <View style={styles.stat}>
+      <IconBubble icon={icon} accent={accent} size="sm" />
+      <AnimatedNumber value={value} prefix="" decimals={0} style={styles.statValue} />
+      <AppText variant="caption" tone="muted">
+        {label}
+      </AppText>
+    </View>
+  );
+}
 
 export default function ProfileScreen() {
   const { t, lang, setLang } = useLanguage();
   const user = useCurrentUser();
   const { role, signOut } = useSession();
   const { teams } = useCatalogs();
+  const { jobs } = useJobs();
   const { queue, retryAll, current } = usePhotoQueue();
   const { pendingCount } = useOutbox();
   const team = findRelation(teams, user.teamId);
   const failed = queue.filter((q) => q.blocked || q.attempts > 0);
+  const done = jobs.filter((j) => workStateOf(j) === 'finished').length;
+  const photos = jobs.reduce((s, j) => s + (j.beforePhotos?.length || 0) + (j.afterPhotos?.length || 0), 0);
+  const synced = queue.length === 0 && pendingCount === 0;
+  const initials = `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase();
 
   return (
-    <ScrollView style={ui.screen} contentContainerStyle={styles.content}>
-      <View style={[ui.card, styles.center]}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {(user.firstName?.[0] || '').toUpperCase()}
-            {(user.lastName?.[0] || '').toUpperCase()}
-          </Text>
+    <View style={styles.screen}>
+    <StatusScrim />
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <GradientHeader overlap={56}>
+        <AppText variant="h1" tone="inverse">
+          {t.profileTitle}
+        </AppText>
+        <View style={styles.identity}>
+          <Animated.View entering={ZoomIn.springify().damping(12)}>
+            <LinearGradient colors={gradients.violet} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ring}>
+              <View style={styles.avatar}>
+                <AppText variant="h1" tone="brand">
+                  {initials}
+                </AppText>
+              </View>
+            </LinearGradient>
+          </Animated.View>
+          <View style={styles.flex}>
+            <AppText variant="h2" tone="inverse" numberOfLines={1}>
+              {user.firstName} {user.lastName}
+            </AppText>
+            <AppText variant="small" tone="inverseMuted" numberOfLines={1}>
+              {user.email}
+            </AppText>
+            <View style={styles.tags}>
+              {!!role?.name && <Chip label={role.name} accent="violet" solid />}
+              {!!team?.name && <Chip label={team.name} color={team.color} onDark />}
+            </View>
+          </View>
         </View>
-        <Text style={styles.name}>
-          {user.firstName} {user.lastName}
-        </Text>
-        <Text style={ui.muted}>{user.email}</Text>
-        <Text style={ui.muted}>{[role?.name, team?.name].filter(Boolean).join(' · ')}</Text>
-      </View>
+      </GradientHeader>
 
-      <View style={[ui.card, styles.gap]}>
-        <Text style={ui.sectionTitle}>{t.language}</Text>
-        <Segmented<Lang>
+      <Animated.View entering={FadeInDown.springify().damping(16)} style={[styles.card, styles.statsCard]}>
+        <Stat icon={House} accent="sky" value={jobs.length} label={t.statJobs} />
+        <View style={styles.vr} />
+        <Stat icon={CircleCheckBig} accent="mint" value={done} label={t.statDone} />
+        <View style={styles.vr} />
+        <Stat icon={Camera} accent="amber" value={photos} label={t.statPhotosUp} />
+      </Animated.View>
+
+      <Animated.View entering={FadeInDown.delay(80).springify().damping(16)} style={styles.card}>
+        <View style={styles.cardHead}>
+          <IconBubble icon={Languages} accent="teal" size="sm" />
+          <AppText variant="title">{t.language}</AppText>
+        </View>
+        <SegmentedTabs<Lang>
           value={lang}
           onChange={setLang}
           options={[
@@ -51,37 +107,43 @@ export default function ProfileScreen() {
             { value: 'en', label: 'English' },
           ]}
         />
-      </View>
+      </Animated.View>
 
-      <View style={[ui.card, styles.gap]}>
-        <View style={ui.row}>
-          <CloudUpload size={20} color={queue.length ? colors.warning : colors.success} />
-          <Text style={styles.queueText}>
-            {t.pendingUploads}: {queue.length}
-            {current ? ` · ${t.uploading} ${Math.round(current.progress * 100)}%` : ''}
-          </Text>
+      <Animated.View entering={FadeInDown.delay(140).springify().damping(16)} style={styles.card}>
+        <View style={styles.cardHead}>
+          <IconBubble icon={synced ? CloudCheck : CloudUpload} accent={synced ? 'mint' : 'amber'} size="sm" />
+          <AppText variant="title">{t.sync}</AppText>
         </View>
-        {pendingCount > 0 && (
-          <Text style={ui.muted}>
-            {t.pendingChanges}: {pendingCount}
-          </Text>
-        )}
-        {failed.length > 0 && (
-          <>
+        {synced ? (
+          <AppText variant="body" tone="success">
+            {t.allSynced}
+          </AppText>
+        ) : (
+          <View style={styles.syncList}>
+            {queue.length > 0 && (
+              <AppText variant="body">
+                {fmt(t.pendingUploads, { n: queue.length })}
+                {current ? ` · ${fmt(t.uploading, { pct: Math.round(current.progress * 100) })}` : ''}
+              </AppText>
+            )}
+            {pendingCount > 0 && <AppText variant="body">{fmt(t.pendingChanges, { n: pendingCount })}</AppText>}
             {failed.slice(0, 3).map((q) => (
-              <Text key={q.id} style={styles.error} numberOfLines={1}>
+              <AppText key={q.id} variant="caption" tone="danger" numberOfLines={1}>
                 {q.label} · {q.lastError}
-              </Text>
+              </AppText>
             ))}
-            <ActionButton variant="outline" compact label={t.retryNow} onPress={retryAll} />
-          </>
+            {failed.length > 0 && <Button variant="soft" size="sm" label={t.retryNow} onPress={retryAll} icon={<RefreshCw size={16} color={colors.primaryDark} />} />}
+          </View>
         )}
-      </View>
+      </Animated.View>
 
-      <ActionButton variant="danger" label={t.signOut} icon={<LogOut size={18} color={colors.white} />} onPress={signOut} />
-      <Text style={styles.version}>
-        {t.version} {Constants.expoConfig?.version}
-      </Text>
+      <Animated.View entering={FadeInDown.delay(200).springify().damping(16)} style={styles.signOut}>
+        <Button variant="outline" label={t.signOut} onPress={signOut} icon={<LogOut size={18} color={colors.primary} />} />
+        <AppText variant="caption" tone="soft" center>
+          {t.appName} · {fmt(t.version, { v: Constants.expoConfig?.version || '' })}
+        </AppText>
+      </Animated.View>
     </ScrollView>
+    </View>
   );
 }

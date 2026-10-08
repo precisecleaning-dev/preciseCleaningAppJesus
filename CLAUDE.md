@@ -1,4 +1,4 @@
-# CLAUDE.md — Precise Crew (app móvil de empleados)
+# CLAUDE.md — Precise Cleaning · app del equipo (móvil)
 
 App React Native + Expo (SDK 57, TypeScript) para los empleados de Precise Cleaning.
 Comparte el **mismo proyecto de Firebase** (`bdprecise-2d4bc`) que la app web
@@ -35,17 +35,51 @@ y ≥1 After; solo quien marcó o un admin puede deshacer).
   Las notas son idempotentes (no se duplican al reintentar).
 - Ambas colas guardan el `userId`: nunca se sube nada de otro empleado que usó el mismo teléfono.
 
+## Diseño (sistema visual)
+
+- **Tokens** en `src/theme/tokens.ts`: azul de la marca + degradado azul→índigo en
+  encabezados, y acentos con SIGNIFICADO fijo — no usarlos como decoración:
+  `sky` por hacer/agenda · `violet` en curso · `mint` terminado/pagado ·
+  `amber` fotos y pendientes · `coral` atrasado/alertas · `teal` notas.
+- **Tipografía**: Plus Jakarta Sans (`@expo-google-fonts`), siempre vía `<AppText variant tone>`.
+  Nunca `<Text>` suelto ni `fontWeight` (en RN el peso lo da la familia).
+- **Primitivas** en `src/components/ui/`: `AppText`, `Button`, `PressableScale` (resorte +
+  háptico), `Chip`, `IconBubble`, `GradientHeader`, `IconButton` (con contador),
+  `SegmentedTabs`, `TabBar`, `Skeleton`, `AnimatedNumber`, `ProgressRing`, `EmptyState`,
+  `FloatingIllustration`, `TextField`. Úsalas antes de crear algo nuevo.
+- **Colores de Firestore** (status, equipo) pasan por `src/utils/color.ts` (`withAlpha`,
+  `safeColor`): la oficina puede escribir formatos que RN no pinta.
+- Encabezados con degradado + `StatusScrim` (franja azul tras la barra de estado).
+  La barra inferior es flotante: deja `TAB_BAR_SPACE` al final de cada lista.
+
+## Movimiento (Reanimated 4)
+
+- Animaciones en el hilo de UI con `react-native-reanimated`; escribir shared values con
+  `.set()` (no `.value =`, lo marca el lint del React Compiler). Desde worklets hacia JS:
+  `scheduleOnRN` de `react-native-worklets`.
+- Duraciones y resortes de `motion` en tokens; listas entran en cascada (`motion.stagger`).
+- Respetar "reducir movimiento" (`useReducedMotion`) en loops y efectos decorativos.
+- Apertura: `AnimatedSplash` (continúa la pantalla nativa azul + logo blanco).
+  Bienvenida de 3 pasos solo la primera vez (`pc_crew_onboarded_v1`).
+
+## Notificaciones
+
+`src/context/NotificationsContext.tsx` compara lo visto con lo que llega en vivo y avisa:
+casa asignada / retirada, cambio de horario, de status, nota de la oficina, pago registrado,
+pago marcado Paid. Solo compara cuando `useJobs().settled` es true (asignadas + equipo +
+statuses + roles + Field Visibility + clientes ya respondieron), para no dar falsos avisos.
+La primera vez solo toma la foto inicial. Con la app cerrada NO hay push (requiere Cloud
+Function + FCM).
+
 ## Estilos (equivalente RN de las reglas de la web)
 
 - Nada de estilos inline con valores fijos. Cada componente tiene su `Componente.styles.ts`
-  hermano con `StyleSheet.create`. Colores, espacios, radios y tipografía salen de
-  `src/theme/tokens.ts` (paleta slate/blue, primario `#3b82f6`).
+  hermano con `StyleSheet.create`; todo valor sale de `src/theme/tokens.ts`.
 - Inline solo para valores de **tiempo de ejecución** (color de un status que viene de
-  Firestore, medidas de `useWindowDimensions`).
-- Estados finitos → variantes en el StyleSheet (`styles.primary`, `styles.outline`…), no ternarios
-  con colores sueltos.
-- Antes de crear un estilo, revisa `src/components/ui.styles.ts` (compartidos).
-- No hay `:hover` en móvil: usa el estado `pressed` de `Pressable`.
+  Firestore, medidas de `useWindowDimensions`, insets del área segura).
+- Estados finitos → variantes en el StyleSheet, no ternarios con colores sueltos.
+- `pointerEvents` va en el estilo, no como prop (deprecado).
+- No hay `:hover` en móvil: usa `PressableScale`.
 
 ## Código
 

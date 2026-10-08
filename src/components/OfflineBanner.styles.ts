@@ -1,14 +1,20 @@
 import { StyleSheet } from 'react-native';
-import { colors, font, space } from '../theme/tokens';
+import { accents, radius, shadow, space } from '../theme/tokens';
 
 export const styles = StyleSheet.create({
   banner: {
+    position: 'absolute',
+    alignSelf: 'center',
+    maxWidth: '92%',
+    zIndex: 90,
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.xs,
-    backgroundColor: colors.warningSoft,
+    backgroundColor: accents.amber.soft,
     paddingHorizontal: space.md,
     paddingVertical: space.xs,
+    borderRadius: radius.pill,
+    ...shadow.card,
   },
-  text: { flex: 1, fontSize: font.sm, color: colors.warning, fontWeight: '600' },
+  text: { flexShrink: 1 },
 });

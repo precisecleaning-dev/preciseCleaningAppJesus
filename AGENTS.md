@@ -28,7 +28,7 @@ Run lint and typecheck before declaring any task done.
 - This app uses **React Navigation** directly (`src/navigation/RootNavigator.tsx`: bottom tabs + a native stack for job detail). It is a small, auth-gated app with no deep links, so Expo Router is not used. Do not migrate without asking.
 - Screens live in `src/screens/`, shared components in `src/components/`.
 
-## Project rules (Precise Crew)
+## Project rules (Precise Cleaning team app)
 
 - Read `CLAUDE.md` before changing anything: it explains how this app stays in sync with the Precise Cleaning web app (same Firebase project, same Firestore fields).
 

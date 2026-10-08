@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Precise Crew",
+    "name": "Precise Cleaning",
     "slug": "precise-crew",
     "scheme": "precisecrew",
     "version": "1.0.0",
@@ -8,16 +8,16 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/logo-mark-white.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1570EF"
     },
     "ios": {
       "bundleIdentifier": "com.precisecleaningtx.crew",
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "Precise Crew usa la cámara para tomar las fotos Before/After de cada casa.",
-        "NSPhotoLibraryUsageDescription": "Precise Crew necesita acceso a tus fotos para cargar las fotos Before/After de cada casa.",
+        "NSCameraUsageDescription": "Precise Cleaning usa la cámara para tomar las fotos Before/After de cada casa.",
+        "NSPhotoLibraryUsageDescription": "Precise Cleaning necesita acceso a tus fotos para cargar las fotos Before/After de cada casa.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -29,18 +29,29 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "permissions": ["android.permission.CAMERA"],
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
       "predictiveBackGestureEnabled": false
     },
     "plugins": [
       [
         "expo-image-picker",
         {
-          "cameraPermission": "Precise Crew usa la cámara para tomar las fotos Before/After de cada casa.",
-          "photosPermission": "Precise Crew necesita acceso a tus fotos para cargar las fotos Before/After de cada casa."
+          "cameraPermission": "Precise Cleaning usa la cámara para tomar las fotos Before/After de cada casa.",
+          "photosPermission": "Precise Cleaning necesita acceso a tus fotos para cargar las fotos Before/After de cada casa."
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1570EF",
+          "image": "./assets/logo-mark-white.png",
+          "imageWidth": 120
+        }
+      ],
+      "expo-font"
     ]
   }
 }

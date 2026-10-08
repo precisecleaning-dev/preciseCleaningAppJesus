@@ -1,22 +1,29 @@
 // src/components/PhotoSection.tsx
-// ⭐ Fotos Before o After de una casa: las ya subidas (URLs en Firestore) más
-//    las que siguen en la cola local, con su progreso. Los botones Cámara /
-//    Galería respetan Photo Settings (allowTakePhoto / allowUploadFromDevice)
-//    y Configure Fields (btn_takePhoto / btn_uploadPhoto) de la web.
+// ⭐ Fotos Before o After de una casa.
+//    · Anillo de color: verde cuando todo está en la nube, ámbar mientras hay
+//      fotos en cola (con el % de la que está subiendo).
+//    · Botones Cámara / Galería como las primeras miniaturas de la tira,
+//      respetando Photo Settings (allowTakePhoto / allowUploadFromDevice) y
+//      Configure Fields (btn_takePhoto / btn_uploadPhoto) de la web.
+//    · Cada foto nueva entra con un pequeño "zoom".
 import { Image } from 'expo-image';
-import { Camera, CloudUpload, ImagePlus, TriangleAlert } from 'lucide-react-native';
+import { Camera, ImagePlus, TriangleAlert } from 'lucide-react-native';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, View } from 'react-native';
+import Animated, { ZoomIn } from 'react-native-reanimated';
 import { useCatalogs } from '../context/CatalogsContext';
 import { useLanguage } from '../context/LanguageContext';
 import { usePhotoQueue } from '../context/PhotoQueueContext';
 import { useSession } from '../context/SessionContext';
+import { fmt } from '../i18n/strings';
 import { pickPhotos } from '../services/photoService';
-import { colors } from '../theme/tokens';
+import { accents, colors } from '../theme/tokens';
 import type { PhotoKind } from '../types';
-import ActionButton from './ActionButton';
 import { styles } from './PhotoSection.styles';
 import PhotoViewer from './PhotoViewer';
+import AppText from './ui/AppText';
+import PressableScale from './ui/PressableScale';
+import ProgressRing from './ui/ProgressRing';
 
 interface Props {
   kind: PhotoKind;
@@ -28,7 +35,9 @@ interface Props {
   canAdd: boolean;
 }
 
-type Tile = { key: string; uri: string; pending: boolean; failed: boolean; progress?: number };
+type Tile =
+  | { type: 'add'; key: string; source: 'camera' | 'library' }
+  | { type: 'photo'; key: string; uri: string; pending: boolean; failed: boolean; progress?: number };
 
 export default function PhotoSection({ kind, urls, propertyId, clientName, address, label, canAdd }: Props) {
   const { t } = useLanguage();
@@ -39,19 +48,32 @@ export default function PhotoSection({ kind, urls, propertyId, clientName, addre
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   const pending = pendingFor(propertyId, kind);
-  const tiles: Tile[] = [
-    ...urls.map((u) => ({ key: u, uri: u, pending: false, failed: false })),
-    ...pending.map((q) => ({
-      key: q.id,
-      uri: localUri(q),
-      pending: true,
-      failed: !!q.blocked || q.attempts > 0,
-      progress: current?.id === q.id ? current.progress : undefined,
-    })),
+  const photos: Tile[] = [
+    ...urls.map((u): Tile => ({ type: 'photo', key: u, uri: u, pending: false, failed: false })),
+    ...pending.map(
+      (q): Tile => ({ type: 'photo', key: q.id, uri: localUri(q), pending: true, failed: !!q.blocked || q.attempts > 0, progress: current?.id === q.id ? current.progress : undefined }),
+    ),
   ];
-
   const showCamera = canAdd && photoConfig.allowTakePhoto && isElementVisible('btn_takePhoto');
   const showGallery = canAdd && photoConfig.allowUploadFromDevice && isElementVisible('btn_uploadPhoto');
+  const tiles: Tile[] = [
+    ...(showCamera ? [{ type: 'add', key: 'add-camera', source: 'camera' } as Tile] : []),
+    ...(showGallery ? [{ type: 'add', key: 'add-library', source: 'library' } as Tile] : []),
+    ...photos,
+  ];
+
+  const total = urls.length + pending.length;
+  const uploadingNow = pending.find((q) => current?.id === q.id);
+  const ringProgress = total === 0 ? 0 : (urls.length + (uploadingNow ? current?.progress || 0 : 0)) / total;
+  const ringColor = pending.length > 0 ? accents.amber.solid : accents.mint.solid;
+  const subtitle =
+    pending.length > 0
+      ? uploadingNow
+        ? fmt(t.uploading, { pct: Math.round((current?.progress || 0) * 100) })
+        : fmt(t.queued, { n: pending.length })
+      : total === 0
+        ? t.noPhotos
+        : `${urls.length} ✓`;
 
   const add = async (source: 'camera' | 'library') => {
     try {
@@ -71,79 +93,71 @@ export default function PhotoSection({ kind, urls, propertyId, clientName, addre
     }
   };
 
+  const photoUris = photos.flatMap((p) => (p.type === 'photo' ? [p.uri] : []));
+
   return (
     <View style={styles.wrap}>
       <View style={styles.header}>
-        <Text style={styles.title}>
-          {kind === 'before' ? t.before : t.after} · {urls.length}
-        </Text>
-        {pending.length > 0 && (
-          <View style={styles.pendingTag}>
-            <CloudUpload size={14} color={colors.warning} />
-            <Text style={styles.pendingText}>{pending.length}</Text>
-          </View>
-        )}
+        <ProgressRing size={44} stroke={5} progress={ringProgress} color={ringColor} track={colors.border}>
+          <AppText variant="caption">{total}</AppText>
+        </ProgressRing>
+        <View style={styles.titles}>
+          <AppText variant="title">{kind === 'before' ? t.before : t.after}</AppText>
+          <AppText variant="caption" style={pending.length > 0 ? styles.subPending : styles.sub}>
+            {subtitle}
+          </AppText>
+        </View>
+        {busy && <ActivityIndicator color={colors.primary} />}
       </View>
 
-      {tiles.length === 0 ? (
-        <Text style={styles.empty}>{t.noPhotos}</Text>
-      ) : (
+      {tiles.length > 0 && (
         <FlatList
           horizontal
           data={tiles}
           keyExtractor={(i) => i.key}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.strip}
-          renderItem={({ item, index }) => (
-            <Pressable onPress={() => setViewerIndex(index)} accessibilityRole="imagebutton">
-              <Image source={{ uri: item.uri }} style={styles.thumb} contentFit="cover" transition={150} />
-              {item.pending && (
-                <View style={styles.thumbOverlay}>
-                  {item.failed ? (
-                    <TriangleAlert size={20} color={colors.white} />
-                  ) : (
-                    <ActivityIndicator color={colors.white} />
+          renderItem={({ item }) => {
+            if (item.type === 'add') {
+              const isCam = item.source === 'camera';
+              const Icon = isCam ? Camera : ImagePlus;
+              return (
+                <PressableScale
+                  onPress={() => add(item.source)}
+                  disabled={busy}
+                  style={[styles.addTile, isCam ? styles.addCamera : styles.addGallery]}
+                  accessibilityLabel={isCam ? t.takePhoto : t.pickPhoto}
+                >
+                  <Icon size={24} color={isCam ? accents.violet.ink : accents.sky.ink} strokeWidth={2.2} />
+                  <AppText variant="caption" style={isCam ? styles.addCamText : styles.addGalText}>
+                    {isCam ? t.takePhoto : t.pickPhoto}
+                  </AppText>
+                </PressableScale>
+              );
+            }
+            const idx = photoUris.indexOf(item.uri);
+            return (
+              <Animated.View entering={ZoomIn.springify().damping(14)}>
+                <Pressable onPress={() => setViewerIndex(idx)} accessibilityRole="imagebutton">
+                  <Image source={{ uri: item.uri }} style={styles.thumb} contentFit="cover" transition={200} />
+                  {item.pending && (
+                    <View style={styles.thumbOverlay}>
+                      {item.failed ? <TriangleAlert size={20} color={colors.white} /> : <ActivityIndicator color={colors.white} />}
+                      {typeof item.progress === 'number' && (
+                        <AppText variant="caption" tone="inverse">
+                          {Math.round(item.progress * 100)}%
+                        </AppText>
+                      )}
+                    </View>
                   )}
-                  {typeof item.progress === 'number' && (
-                    <Text style={styles.thumbProgress}>{Math.round(item.progress * 100)}%</Text>
-                  )}
-                </View>
-              )}
-            </Pressable>
-          )}
+                </Pressable>
+              </Animated.View>
+            );
+          }}
         />
       )}
 
-      {(showCamera || showGallery) && (
-        <View style={styles.actions}>
-          {showCamera && (
-            <View style={styles.actionItem}>
-              <ActionButton
-                compact
-                variant="outline"
-                label={t.takePhoto}
-                icon={<Camera size={18} color={colors.primary} />}
-                onPress={() => add('camera')}
-                loading={busy}
-              />
-            </View>
-          )}
-          {showGallery && (
-            <View style={styles.actionItem}>
-              <ActionButton
-                compact
-                variant="outline"
-                label={t.pickPhoto}
-                icon={<ImagePlus size={18} color={colors.primary} />}
-                onPress={() => add('library')}
-                disabled={busy}
-              />
-            </View>
-          )}
-        </View>
-      )}
-
-      <PhotoViewer uris={tiles.map((x) => x.uri)} index={viewerIndex} onClose={() => setViewerIndex(null)} />
+      <PhotoViewer uris={photoUris} index={viewerIndex} onClose={() => setViewerIndex(null)} />
     </View>
   );
 }
