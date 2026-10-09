@@ -3,6 +3,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Bell, CalendarCheck, CalendarClock, CalendarDays, CirclePlay, CloudUpload, History, House, Sparkles, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
+import { useNow } from '../hooks/useNow';
 import { FlatList, View } from 'react-native';
 import JobCard from '../components/JobCard';
 import NextJobCard from '../components/NextJobCard';
@@ -30,7 +31,7 @@ import { styles } from './HomeScreen.styles';
 
 type Props = CompositeScreenProps<BottomTabScreenProps<TabParams, 'Home'>, NativeStackScreenProps<RootStackParams>>;
 
-const greeting = (t: Strings, h = new Date().getHours()) => (h < 12 ? t.greetingMorning : h < 19 ? t.greetingAfternoon : t.greetingEvening);
+const greeting = (t: Strings, h: number) => (h < 12 ? t.greetingMorning : h < 19 ? t.greetingAfternoon : t.greetingEvening);
 
 function Stat({ icon: Icon, value, label, accent }: { icon: LucideIcon; value: number; label: string; accent: AccentName }) {
   return (
@@ -54,13 +55,13 @@ export default function HomeScreen({ navigation }: Props) {
   const { unread } = useNotifications();
   const [segment, setSegment] = useState<Segment>('today');
 
-  const grouped = groupJobs(jobs);
+  const now = useNow();
+  const grouped = groupJobs(jobs, now);
 
   const inProgress = grouped.today.filter((j) => workStateOf(j) === 'inProgress').length;
   const nextJob = grouped.today.find((j) => workStateOf(j) !== 'finished') ?? null;
   const openJob = (j: Property) => navigation.navigate('JobDetail', { jobId: j.id });
 
-  const now = new Date();
   const today = `${t.weekdays[now.getDay()]}, ${formatDate(now)}`;
   const initials = initialsOf(user);
 
@@ -84,7 +85,7 @@ export default function HomeScreen({ navigation }: Props) {
               {today}
             </AppText>
             <AppText variant="h1" tone="inverse" numberOfLines={1}>
-              {greeting(t)}, {user.firstName}
+              {greeting(t, now.getHours())}, {user.firstName}
             </AppText>
           </View>
           <IconButton icon={Bell} onPress={() => navigation.navigate('Notifications')} label={t.notifTitle} badge={unread} />

@@ -102,7 +102,7 @@ export function PhotoQueueProvider({ children }: { children: ReactNode }) {
         patch(id, { lastError: result.code });
         return true;
       } else {
-        patch(id, { lastError: result.code, attempts: item.attempts + 1, blocked: result.kind === 'permanent' });
+        update((prev) => prev.map((q) => (q.id === id ? { ...q, lastError: result.code, attempts: q.attempts + 1, blocked: result.kind === 'permanent' } : q)));
       }
     }
     return false;

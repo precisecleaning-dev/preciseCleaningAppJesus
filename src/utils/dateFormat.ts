@@ -6,22 +6,23 @@ const valid = (d: Date) => (isNaN(d.getTime()) ? null : d);
 
 function parseDayString(str: string): Date | null {
   const iso = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
   const slash = str.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
-  if (!slash) return null;
-  const a = Number(slash[1]);
-  const b = Number(slash[2]);
-  const [month, day] = a > 12 && b <= 12 ? [b, a] : [a, b];
-  return new Date(Number(slash[3]), month - 1, day);
+  const parts = iso ? [iso[1], iso[2], iso[3]] : slash ? [slash[3], slash[1], slash[2]] : null;
+  if (!parts) return null;
+  const [y, a, b] = parts.map(Number);
+  const [month, day] = slash && a > 12 && b <= 12 ? [b, a] : [a, b];
+  const d = new Date(y, month - 1, day);
+  return d.getMonth() === month - 1 && d.getDate() === day ? d : null;
 }
 
 function toDate(value: DateLike, dayOnly: boolean): Date | null {
   if (value === null || value === undefined || value === '') return null;
   if (value instanceof Date) return valid(value);
   if (typeof value === 'number') return valid(new Date(value));
-  if (typeof value === 'object') return valid(value.toDate());
+  if (typeof value === 'object') return typeof value.toDate === 'function' ? valid(value.toDate()) : null;
   const str = value.trim();
-  return (dayOnly ? parseDayString(str) : null) ?? valid(new Date(str));
+  const looksLikeDay = /^\d{1,4}[/-]\d{1,2}[/-]\d{1,4}/.test(str);
+  return looksLikeDay && (dayOnly || !str.includes('T')) ? parseDayString(str) : valid(new Date(str));
 }
 
 export function formatDate(value: DateLike): string {

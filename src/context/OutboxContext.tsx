@@ -64,10 +64,11 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
       }
     }
   };
-  const sendNotes = async () => {
-    if (notesRunning.current || !(await checkOnline())) return;
+  const sendNotes = () => {
+    if (notesRunning.current) return;
     notesRunning.current = true;
-    drainNotes()
+    checkOnline()
+      .then((ok) => (ok ? drainNotes() : undefined))
       .catch((err) => console.error('Error enviando notas:', err))
       .then(() => {
         notesRunning.current = false;

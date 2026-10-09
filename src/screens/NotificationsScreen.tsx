@@ -13,13 +13,14 @@ import type { AppNotification } from '../utils/notificationDiff';
 import { fmt } from '../i18n/strings';
 import type { RootStackParams } from '../navigation/types';
 import { gradients } from '../theme/tokens';
+import { useNow } from '../hooks/useNow';
 import { startOfToday } from '../utils/dateFormat';
 import { notificationView, timeAgo } from '../utils/notificationView';
 import { styles } from './NotificationsScreen.styles';
 
 type Props = NativeStackScreenProps<RootStackParams, 'Notifications'>;
 
-function Row({ n, onOpen }: { n: AppNotification; onOpen: (n: AppNotification) => void }) {
+function Row({ n, now, onOpen }: { n: AppNotification; now: number; onOpen: (n: AppNotification) => void }) {
   const { t } = useLanguage();
   const v = notificationView(n, t);
   return (
@@ -31,7 +32,7 @@ function Row({ n, onOpen }: { n: AppNotification; onOpen: (n: AppNotification) =
             {v.title}
           </AppText>
           <AppText variant="caption" tone="soft">
-            {timeAgo(n.at, t)}
+            {timeAgo(n.at, t, now)}
           </AppText>
         </View>
         <AppText variant="small" tone="body" numberOfLines={3}>
@@ -47,7 +48,8 @@ export default function NotificationsScreen({ navigation }: Props) {
   const { t } = useLanguage();
   const { list, unread, markRead, markAllRead } = useNotifications();
 
-  const today = startOfToday();
+  const now = useNow();
+  const today = startOfToday(now);
   const sections = [
     { key: 'today', title: t.today, data: list.filter((n) => n.at >= today) },
     { key: 'earlier', title: t.earlier, data: list.filter((n) => n.at < today) },
@@ -76,7 +78,7 @@ export default function NotificationsScreen({ navigation }: Props) {
             {section.title}
           </AppText>
         )}
-        renderItem={({ item }) => <Row n={item} onOpen={open} />}
+        renderItem={({ item }) => <Row n={item} now={now.getTime()} onOpen={open} />}
         ListEmptyComponent={
           <EmptyState
             icon={Bell}

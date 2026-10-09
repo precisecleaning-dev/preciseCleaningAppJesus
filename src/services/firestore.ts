@@ -10,6 +10,8 @@ function converter<T extends { id: string }>(): FirestoreDataConverter<T> {
 
 export const typedCollection = <T extends { id: string }>(path: string) => collection(db, path).withConverter(converter<T>());
 
+export const isDocId = (k: string) => !!k && !k.includes('/') && k !== '.' && k !== '..' && !/^__.*__$/.test(k);
+
 export function chunk<T>(list: T[], size = 30): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));

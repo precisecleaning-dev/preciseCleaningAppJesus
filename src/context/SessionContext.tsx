@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { auth } from '../config/firebase';
 import { useWhenOnline } from '../hooks/useWhenOnline';
 import { resetCustomers } from '../services/customersService';
@@ -40,6 +40,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [authChecked, setAuthChecked] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
+  const lastLogin = useRef<symbol | null>(null);
   const [profile, setProfile] = useState<{ email: string; user: SystemUser | null } | null>(null);
   const [roles, setRoles] = useState<Role[] | null>(null);
   const [formConfig, setFormConfig] = useState<FormVisibilityConfig | null>(null);
@@ -50,8 +51,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     let checked = false;
     return onAuthStateChanged(auth, (u) => {
       if (checked && u) {
+        const login = Symbol('login');
+        lastLogin.current = login;
         setSigningIn(true);
-        minDelay().then(() => setSigningIn(false));
+        minDelay().then(() => {
+          if (lastLogin.current === login) setSigningIn(false);
+        });
       }
       checked = true;
       setAuthUser(u);
@@ -80,10 +85,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useWhenOnline(() => {
     loadRoles()
       .then(setRoles)
-      .catch((err) => console.error('Error cargando roles:', err));
+      .catch((err) => {
+        console.error('Error cargando roles:', err);
+        setRoles((r) => r ?? []);
+      });
     loadFormConfig()
       .then(setFormConfig)
-      .catch((err) => console.error('Error cargando houses_form_config:', err));
+      .catch((err) => {
+        console.error('Error cargando houses_form_config:', err);
+        setFormConfig((f) => f ?? {});
+      });
   }, !!email);
 
   useEffect(() => {

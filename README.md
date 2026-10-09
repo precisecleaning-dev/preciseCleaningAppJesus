@@ -7,10 +7,10 @@ El empleado también ve su **Payroll** (pendiente / pagado, por semana).
 
 ## Qué hace
 
-- **Apertura animada** con la marca y **bienvenida** de 3 pasos la primera vez.
-- **Notificaciones**: campana con contador y aviso flotante cuando te asignan una casa,
+- **Pantalla de carga animada** al abrir la app, al iniciar sesión y al cerrar sesión, y
+  **bienvenida** de 3 pasos la primera vez. El resto de la app no tiene animaciones.
+- **Notificaciones**: campana animada con contador y aviso fijo arriba cuando te asignan una casa,
   cambia el horario o el status, la oficina deja una nota o se registra/paga tu payroll.
-
 - **Login** con el mismo correo y contraseña de la web (las cuentas se crean en System Users).
 - **Mis casas**: Hoy (incluye en curso y atrasadas recientes) · Próximas · Historial.
   Muestra las casas donde el empleado está en *Assigned Workers* o que son de su equipo.

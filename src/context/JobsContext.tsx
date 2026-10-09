@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { useWhenOnline } from '../hooks/useWhenOnline';
 import { getCustomersByKeys } from '../services/customersService';
 import { subscribeAssigned, subscribeTeam } from '../services/propertiesService';
 import type { Customer, Property, Status } from '../types';
@@ -32,6 +33,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   const [byTeam, setByTeam] = useState<Keyed<Property>>(null);
   const [customers, setCustomers] = useState<Keyed<Customer>>(null);
   const [extraKeys, setExtraKeys] = useState('');
+  const [retry, setRetry] = useState(0);
 
   const userId = user?.id ?? '';
   const team = findRelation(teams, user?.teamId);
@@ -65,13 +67,15 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!clientKeys || !online) return;
     let cancelled = false;
-    getCustomersByKeys(clientKeys.split('|')).then((list) => {
-      if (!cancelled) setCustomers({ key: clientKeys, list });
+    getCustomersByKeys(clientKeys.split('|')).then(({ list, complete }) => {
+      if (!cancelled) setCustomers({ key: complete ? clientKeys : '', list });
     });
     return () => {
       cancelled = true;
     };
-  }, [clientKeys, online]);
+  }, [clientKeys, online, retry]);
+
+  useWhenOnline(() => setRetry((n) => n + 1), customers?.key === '');
 
   const customerList = customers?.list ?? [];
   const clientName = (p: Property) => displayClientName(customerList, p.client, { unknown: t.unknownClient, deleted: t.deletedClient });
@@ -79,7 +83,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     jobs,
     jobsLoaded: assignedLoaded,
     settled: assignedLoaded && teamLoaded && catalogsLoaded && configLoaded && (!clientKeys || customers?.key === clientKeys),
-    getJob: (id) => jobs.find((j) => j.id === id),
+    getJob: (id) => merged.get(id),
     clientName,
     serviceName: (p) => (findRelation(products, p.serviceId) ?? findRelation(services, p.serviceId))?.name ?? '—',
     statusOf,

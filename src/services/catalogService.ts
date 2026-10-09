@@ -21,7 +21,17 @@ export interface Catalogs {
   photoConfig: PhotoConfig;
 }
 
-const readAll = async <T extends { id: string }>(path: string) => (await getDocsFromServer(typedCollection<T>(path))).docs.map((d) => d.data());
+async function readAll<T extends { id: string }>(path: string): Promise<T[]> {
+  try {
+    return (await getDocsFromServer(typedCollection<T>(path))).docs.map((d) => d.data());
+  } catch (err) {
+    if (/permission-denied/.test(String((err as { code?: string })?.code))) {
+      console.error(`Sin acceso a ${path}:`, err);
+      return [];
+    }
+    throw err;
+  }
+}
 
 async function readCatalogs(): Promise<Catalogs> {
   const [statuses, teams, priorities, products, services, photoConfig] = await Promise.all([
