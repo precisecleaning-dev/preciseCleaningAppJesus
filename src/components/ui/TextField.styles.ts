@@ -11,7 +11,7 @@ export const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1.5,
     borderColor: colors.border,
-    backgroundColor: '#F8FAFD',
+    backgroundColor: colors.field,
   },
   focused: { borderColor: colors.primary, backgroundColor: colors.surface },
   invalid: { borderColor: colors.danger },

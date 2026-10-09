@@ -1,8 +1,6 @@
-// src/utils/notificationView.ts
-// Cómo se ve cada tipo de notificación: ícono, color (con significado) y texto.
 import { Banknote, CalendarClock, CircleDollarSign, House, MapPinOff, MessageSquareText, Tag, type LucideIcon } from 'lucide-react-native';
 import { fmt, type Strings } from '../i18n/strings';
-import type { AppNotification, NotifKind } from '../context/NotificationsContext';
+import type { AppNotification, NotifKind } from './notificationDiff';
 import type { AccentName } from '../theme/tokens';
 import { formatDate, money } from './dateFormat';
 
@@ -16,7 +14,6 @@ const META: Record<NotifKind, { icon: LucideIcon; accent: AccentName }> = {
   paid: { icon: CircleDollarSign, accent: 'mint' },
 };
 
-/** "10/08/2026 9:00 AM" → fecha normalizada + hora, para el cuerpo del aviso. */
 const when = (v?: string) => {
   if (!v) return '—';
   const [d, ...rest] = v.split(' ');

@@ -1,7 +1,3 @@
-// src/components/ui/AppText.tsx
-// ⭐ Única puerta a la tipografía: toda la app escribe con <AppText variant>.
-//    Así la fuente (Plus Jakarta Sans), los tamaños y el color base no se
-//    repiten pantalla por pantalla y cambiar la escala es tocar un solo archivo.
 import { Text, type TextProps } from 'react-native';
 import type { TypeVariant } from '../../theme/tokens';
 import { styles, tones } from './AppText.styles';

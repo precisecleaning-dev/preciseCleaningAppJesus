@@ -1,5 +1,3 @@
-// src/screens/BlockedScreen.tsx
-// Sesión válida en Firebase Auth pero sin perfil activo en System Users.
 import { Mail, ShieldAlert, UserX } from 'lucide-react-native';
 import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -21,7 +19,11 @@ export default function BlockedScreen({ reason }: { reason: 'noProfile' | 'inact
       <EmptyState
         icon={UserX}
         gradient={gradients.amber}
-        orbits={[{ icon: ShieldAlert, accent: 'coral' }, { icon: Mail, accent: 'sky' }, { icon: UserX, accent: 'violet' }]}
+        orbits={[
+          { icon: ShieldAlert, accent: 'coral' },
+          { icon: Mail, accent: 'sky' },
+          { icon: UserX, accent: 'violet' },
+        ]}
         title={t.noProfileTitle}
         body={reason === 'inactive' ? t.inactiveBody : t.noProfileBody}
       />

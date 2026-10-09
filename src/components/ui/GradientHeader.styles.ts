@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { radius, space } from '../../theme/tokens';
+import { colors, radius, space } from '../../theme/tokens';
 
 export const styles = StyleSheet.create({
   header: {
@@ -9,7 +9,7 @@ export const styles = StyleSheet.create({
     overflow: 'hidden',
     gap: space.md,
   },
-  orb: { position: 'absolute', borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.09)', pointerEvents: 'none' },
+  orb: { position: 'absolute', borderRadius: 999, backgroundColor: colors.orb, pointerEvents: 'none' },
   orbA: { width: 220, height: 220, top: -90, right: -60 },
   orbB: { width: 140, height: 140, bottom: -70, left: -40 },
 });

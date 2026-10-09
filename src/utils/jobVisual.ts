@@ -1,7 +1,3 @@
-// src/utils/jobVisual.ts
-// Color e ícono de una casa según su estado de trabajo — el mismo código de
-// color en tarjetas, detalle y avisos (sky = por hacer, violet = en curso,
-// mint = terminada, coral = atrasada).
 import { CircleCheckBig, CirclePlay, House, TriangleAlert, type LucideIcon } from 'lucide-react-native';
 import type { Strings } from '../i18n/strings';
 import type { AccentName } from '../theme/tokens';

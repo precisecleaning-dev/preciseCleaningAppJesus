@@ -15,7 +15,7 @@ export const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1.5,
     borderColor: colors.border,
-    backgroundColor: '#F8FAFD',
+    backgroundColor: colors.field,
     paddingHorizontal: space.md,
     paddingTop: space.sm + 2,
     paddingBottom: space.sm,

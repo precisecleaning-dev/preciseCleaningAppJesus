@@ -1,14 +1,12 @@
-// src/components/LoadingScreen.tsx
-// Pantalla de espera con la marca (p. ej. justo después de iniciar sesión,
-// mientras llega el perfil). Nunca una pantalla en blanco.
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ActivityIndicator, View } from 'react-native';
-import Animated, { ZoomIn } from 'react-native-reanimated';
+import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 import { colors, gradients } from '../theme/tokens';
 import { styles } from './LoadingScreen.styles';
+import AppText from './ui/AppText';
 
-export default function LoadingScreen() {
+export default function LoadingScreen({ label }: { label: string }) {
   return (
     <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.fill}>
       <Animated.View entering={ZoomIn.springify().damping(12)} style={styles.box}>
@@ -17,6 +15,11 @@ export default function LoadingScreen() {
       <View style={styles.spinner}>
         <ActivityIndicator color={colors.white} size="large" />
       </View>
+      <Animated.View entering={FadeIn.delay(200)}>
+        <AppText variant="title" tone="inverse" center>
+          {label}
+        </AppText>
+      </Animated.View>
     </LinearGradient>
   );
 }

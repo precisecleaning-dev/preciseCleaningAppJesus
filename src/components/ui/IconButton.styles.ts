@@ -1,10 +1,17 @@
 import { StyleSheet } from 'react-native';
-import { accents, colors, radius, shadow, touchMin } from '../../theme/tokens';
+import { accents, colors, radius, touchMin } from '../../theme/tokens';
 
 export const styles = StyleSheet.create({
-  btn: { width: touchMin, height: touchMin, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
-  glass: { backgroundColor: colors.glass, borderWidth: 1, borderColor: colors.glassBorder },
-  light: { backgroundColor: colors.surface, ...shadow.card },
+  btn: {
+    width: touchMin,
+    height: touchMin,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+  },
   badge: {
     position: 'absolute',
     top: -4,

@@ -17,7 +17,4 @@ export const styles = StyleSheet.create({
   label_outline: { color: colors.primary },
   label_ghost: { color: colors.primary },
   label_soft: { color: accents.brand.ink },
-  label_brand: { color: colors.white },
-  label_success: { color: colors.white },
-  label_danger: { color: colors.white },
 });

@@ -1,9 +1,6 @@
-// src/context/LanguageContext.tsx
-// ⭐ Idioma: por defecto el del teléfono (español si no es inglés), y el
-//    empleado puede cambiarlo en Perfil; la elección se recuerda en el equipo.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocales } from 'expo-localization';
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { dictionaries, type Lang, type Strings } from '../i18n/strings';
 
 const STORAGE_KEY = 'pc_crew_lang';
@@ -29,17 +26,14 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       .catch(() => undefined);
   }, []);
 
-  const value = useMemo<LanguageValue>(
-    () => ({
-      lang,
-      t: dictionaries[lang],
-      setLang: (l) => {
-        setLangState(l);
-        AsyncStorage.setItem(STORAGE_KEY, l).catch(() => undefined);
-      },
-    }),
-    [lang],
-  );
+  const value: LanguageValue = {
+    lang,
+    t: dictionaries[lang],
+    setLang: (l) => {
+      setLangState(l);
+      AsyncStorage.setItem(STORAGE_KEY, l).catch(() => undefined);
+    },
+  };
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }

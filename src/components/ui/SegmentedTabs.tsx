@@ -1,10 +1,5 @@
-// src/components/ui/SegmentedTabs.tsx
-// Pestañas con indicador que se desliza con resorte hasta la opción elegida.
-import { useState } from 'react';
-import { Pressable, View, type LayoutChangeEvent } from 'react-native';
-import Animated, { useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { motion } from '../../theme/tokens';
+import { Pressable, View } from 'react-native';
 import AppText from './AppText';
 import { styles } from './SegmentedTabs.styles';
 
@@ -21,17 +16,8 @@ interface Props<T extends string> {
 }
 
 export default function SegmentedTabs<T extends string>({ options, value, onChange }: Props<T>) {
-  const [width, setWidth] = useState(0);
-  const index = Math.max(0, options.findIndex((o) => o.value === value));
-  const itemW = width / options.length;
-  const indicator = useAnimatedStyle(() => ({
-    width: itemW,
-    transform: [{ translateX: withSpring(index * itemW, motion.spring) }],
-  }));
-
   return (
-    <View style={styles.wrap} onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width - 8)} accessibilityRole="tablist">
-      {width > 0 && <Animated.View style={[styles.indicator, indicator]} />}
+    <View style={styles.wrap} accessibilityRole="tablist">
       {options.map((o) => {
         const active = o.value === value;
         return (
@@ -40,17 +26,18 @@ export default function SegmentedTabs<T extends string>({ options, value, onChan
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             onPress={() => {
-              if (!active) Haptics.selectionAsync().catch(() => undefined);
+              if (active) return;
+              Haptics.selectionAsync().catch(() => undefined);
               onChange(o.value);
             }}
-            style={styles.item}
+            style={[styles.item, active && styles.itemActive]}
           >
             <AppText variant="caption" style={active ? styles.labelActive : styles.label}>
               {o.label}
             </AppText>
-            {typeof o.count === 'number' && (
+            {o.count !== undefined && (
               <View style={[styles.count, active && styles.countActive]}>
-                <AppText variant="caption" style={active ? styles.countTextActive : styles.countText}>
+                <AppText variant="caption" style={[styles.countText, active && styles.countTextActive]}>
                   {o.count}
                 </AppText>
               </View>

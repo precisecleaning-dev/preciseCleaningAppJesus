@@ -1,12 +1,6 @@
-// src/i18n/strings.ts
-// ⭐ Textos de la app en español e inglés. Las etiquetas que también existen en
-//    la web (Start Job, Before/After, Payroll…) usan las mismas palabras para que
-//    la oficina y el equipo hablen de lo mismo. Los textos con {variables} se
-//    completan con fmt().
 const es = {
   appName: 'Precise Cleaning',
   appTagline: 'App del equipo',
-  loading: 'Cargando…',
 
   next: 'Siguiente',
   start: 'Comenzar',
@@ -33,6 +27,8 @@ const es = {
   noProfileBody: 'Tu correo no está registrado en System Users. Pide a la oficina que te agregue.',
   inactiveBody: 'Tu usuario está inactivo. Habla con la oficina.',
   signOut: 'Cerrar sesión',
+  loadingSession: 'Entrando…',
+  signingOut: 'Cerrando sesión…',
 
   tabHome: 'Inicio',
   tabPayroll: 'Payroll',
@@ -50,6 +46,7 @@ const es = {
   openJob: 'Ver casa',
   allDoneTitle: '¡Día completo!',
   allDoneBody: 'No tienes casas pendientes para hoy.',
+  weekdays: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'],
   segToday: 'Hoy',
   segUpcoming: 'Próximas',
   segHistory: 'Historial',
@@ -109,12 +106,10 @@ const es = {
   galleryDenied: 'Activa el permiso de fotos en Ajustes para cargar imágenes.',
   noPhotos: 'Sin fotos todavía',
 
-  notes: 'Notas',
   generalNote: 'Nota de la oficina',
   employeeNote: "Employee's Note",
   writeNote: 'Escribe una nota…',
   send: 'Enviar',
-  noteError: 'No se pudo guardar la nota.',
   pendingSync: 'pendiente de enviar',
 
   payrollTitle: 'Mi Payroll',
@@ -130,6 +125,8 @@ const es = {
   noPayrollTitle: 'Sin pagos todavía',
   noPayrollBody: 'Cuando la oficina registre tus pagos, los verás aquí.',
   house: 'Casa',
+  unknownClient: 'Cliente sin nombre',
+  deletedClient: 'Cliente eliminado',
   adjustment: 'Ajuste del pago',
 
   profileTitle: 'Mi perfil',
@@ -170,6 +167,7 @@ const es = {
   n_paid_b: 'Se marcó como pagado {amount}.',
 
   cancel: 'Cancelar',
+  close: 'Cerrar',
   confirm: 'Confirmar',
   error: 'Error',
   offline: 'Sin conexión · los cambios se envían al volver la señal',
@@ -180,7 +178,6 @@ export type Strings = typeof es;
 const en: Strings = {
   appName: 'Precise Cleaning',
   appTagline: 'Team app',
-  loading: 'Loading…',
 
   next: 'Next',
   start: 'Get started',
@@ -207,6 +204,8 @@ const en: Strings = {
   noProfileBody: 'Your email is not registered in System Users. Ask the office to add you.',
   inactiveBody: 'Your user is inactive. Talk to the office.',
   signOut: 'Sign out',
+  loadingSession: 'Signing in…',
+  signingOut: 'Signing out…',
 
   tabHome: 'Home',
   tabPayroll: 'Payroll',
@@ -224,6 +223,7 @@ const en: Strings = {
   openJob: 'Open house',
   allDoneTitle: 'Day complete!',
   allDoneBody: 'You have no pending houses today.',
+  weekdays: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
   segToday: 'Today',
   segUpcoming: 'Upcoming',
   segHistory: 'History',
@@ -283,12 +283,10 @@ const en: Strings = {
   galleryDenied: 'Enable photo permission in Settings to upload images.',
   noPhotos: 'No photos yet',
 
-  notes: 'Notes',
   generalNote: 'Office note',
   employeeNote: "Employee's Note",
   writeNote: 'Write a note…',
   send: 'Send',
-  noteError: 'Could not save the note.',
   pendingSync: 'waiting to send',
 
   payrollTitle: 'My Payroll',
@@ -304,6 +302,8 @@ const en: Strings = {
   noPayrollTitle: 'No payments yet',
   noPayrollBody: 'When the office records your payments, you will see them here.',
   house: 'House',
+  unknownClient: 'Unnamed client',
+  deletedClient: 'Deleted client',
   adjustment: 'Payment adjustment',
 
   profileTitle: 'My profile',
@@ -344,6 +344,7 @@ const en: Strings = {
   n_paid_b: '{amount} was marked as paid.',
 
   cancel: 'Cancel',
+  close: 'Close',
   confirm: 'Confirm',
   error: 'Error',
   offline: 'Offline · changes send when signal returns',
@@ -352,7 +353,6 @@ const en: Strings = {
 export const dictionaries = { es, en };
 export type Lang = keyof typeof dictionaries;
 
-/** Completa {variables} de un texto. */
 export function fmt(text: string, vars: Record<string, string | number | undefined>): string {
   return text.replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? ''));
 }

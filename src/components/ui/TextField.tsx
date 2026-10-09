@@ -1,18 +1,17 @@
-// src/components/ui/TextField.tsx
-// Campo de texto con ícono; el borde toma el color de la marca al enfocar.
 import type { LucideIcon } from 'lucide-react-native';
-import { forwardRef, useState, type ReactNode } from 'react';
+import { useState, type ReactNode, type Ref } from 'react';
 import { TextInput, View, type TextInputProps } from 'react-native';
 import { colors } from '../../theme/tokens';
 import { styles } from './TextField.styles';
 
 interface Props extends TextInputProps {
+  ref?: Ref<TextInput>;
   icon?: LucideIcon;
   right?: ReactNode;
   invalid?: boolean;
 }
 
-const TextField = forwardRef<TextInput, Props>(function TextField({ icon: Icon, right, invalid, onFocus, onBlur, style, ...rest }, ref) {
+export default function TextField({ ref, icon: Icon, right, invalid, onFocus, onBlur, style, ...rest }: Props) {
   const [focused, setFocused] = useState(false);
   return (
     <View style={[styles.wrap, focused && styles.focused, invalid && styles.invalid]}>
@@ -34,6 +33,4 @@ const TextField = forwardRef<TextInput, Props>(function TextField({ icon: Icon, 
       {right}
     </View>
   );
-});
-
-export default TextField;
+}

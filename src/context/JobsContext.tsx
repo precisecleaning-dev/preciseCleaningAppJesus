@@ -1,125 +1,94 @@
-// src/context/JobsContext.tsx
-// ⭐ "Mis casas": las casas que la oficina le asignó al empleado desde la web.
-//    Misma regla que el alcance 'Own' de HousesView y "Mi historial":
-//      · el empleado está en `assignedWorkers`, O
-//      · la casa es de su equipo (`teamId`).
-//    En vez de bajar TODA la colección `properties` como la web (pesado para
-//    datos móviles), se hacen dos consultas filtradas en el servidor y se unen.
-//    Son onSnapshot: en cuanto el admin asigna una casa, aparece en el teléfono.
-import { collection, onSnapshot, query, where, type QuerySnapshot } from 'firebase/firestore';
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { db } from '../config/firebase';
-import type { Property, Status } from '../types';
-import { displayClientName, findRelation, getRelationName } from '../utils/relations';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { getCustomersByKeys } from '../services/customersService';
+import { subscribeAssigned, subscribeTeam } from '../services/propertiesService';
+import type { Customer, Property, Status } from '../types';
+import { displayClientName, findRelation } from '../utils/relations';
 import { useCatalogs } from './CatalogsContext';
+import { useLanguage } from './LanguageContext';
+import { useOnline } from './NetworkContext';
 import { useSession } from './SessionContext';
 
 interface JobsValue {
   jobs: Property[];
   jobsLoaded: boolean;
-  /** Todas las consultas (asignadas, equipo, statuses) ya respondieron. */
   settled: boolean;
   getJob: (id: string) => Property | undefined;
   clientName: (p: Property) => string;
   serviceName: (p: Property) => string;
   statusOf: (p: Property) => Status | undefined;
-  /** "Cliente — Dirección", mismo formato que logLabel() de la web. */
   logLabel: (p: Property) => string;
+  requestClients: (keys: string[]) => void;
 }
 
+type Keyed<T> = { key: string; list: T[] } | null;
 const JobsContext = createContext<JobsValue | null>(null);
-
-const EMPTY: Property[] = [];
-
-const toProps = (snap: QuerySnapshot) => snap.docs.map((d) => ({ ...d.data(), id: d.id }) as Property);
 
 export function JobsProvider({ children }: { children: ReactNode }) {
   const { user, isSuperAdmin, housesPermission, isElementVisible, configLoaded } = useSession();
-  const { statuses, statusesLoaded, teams, customers, customersLoaded, products, services } = useCatalogs();
-  // Cada resultado se guarda con la clave para la que se pidió (usuario /
-  // equipo): si cambia la clave, el resultado viejo se ignora solo.
-  const [assignedRes, setAssignedRes] = useState<{ key: string; list: Property[] } | null>(null);
-  const [teamRes, setTeamRes] = useState<{ key: string; list: Property[] } | null>(null);
+  const { statuses, teams, products, services, loaded: catalogsLoaded } = useCatalogs();
+  const { t } = useLanguage();
+  const online = useOnline();
+  const [assigned, setAssigned] = useState<Keyed<Property>>(null);
+  const [byTeam, setByTeam] = useState<Keyed<Property>>(null);
+  const [customers, setCustomers] = useState<Keyed<Customer>>(null);
+  const [extraKeys, setExtraKeys] = useState('');
 
-  const userId = user?.id;
+  const userId = user?.id ?? '';
   const team = findRelation(teams, user?.teamId);
-  // Las casas legacy guardan a veces el NOMBRE del equipo en vez del id.
-  const teamKeys = useMemo(
-    () => [...new Set([user?.teamId, team?.id, team?.name].filter((v): v is string => !!v))].slice(0, 10),
-    [user?.teamId, team?.id, team?.name],
-  );
-  const teamKeysStr = teamKeys.join('|');
+  const teamKey = [...new Set([user?.teamId, team?.id, team?.name].filter(Boolean))].join('|');
 
   useEffect(() => {
     if (!userId) return;
-    return onSnapshot(
-      query(collection(db, 'properties'), where('assignedWorkers', 'array-contains', userId)),
-      (snap) => setAssignedRes({ key: userId, list: toProps(snap) }),
-      (err) => {
-        console.error('Error cargando casas asignadas:', err);
-        setAssignedRes({ key: userId, list: [] });
-      },
-    );
+    return subscribeAssigned(userId, (list) => setAssigned({ key: userId, list }));
   }, [userId]);
 
   useEffect(() => {
-    if (teamKeys.length === 0) return;
-    return onSnapshot(
-      query(collection(db, 'properties'), where('teamId', 'in', teamKeys)),
-      (snap) => setTeamRes({ key: teamKeysStr, list: toProps(snap) }),
-      (err) => {
-        console.error('Error cargando casas del equipo:', err);
-        setTeamRes({ key: teamKeysStr, list: [] });
-      },
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- teamKeysStr representa teamKeys
-  }, [teamKeysStr]);
+    if (!teamKey) return;
+    return subscribeTeam(teamKey.split('|'), (list) => setByTeam({ key: teamKey, list }));
+  }, [teamKey]);
 
-  const assignedLoaded = !!userId && assignedRes?.key === userId;
-  const assigned = assignedLoaded ? assignedRes.list : EMPTY;
-  const teamLoaded = !teamKeysStr || teamRes?.key === teamKeysStr;
-  const byTeam = teamKeysStr && teamLoaded && teamRes ? teamRes.list : EMPTY;
-  // "Asentado": ya llegaron TODAS las fuentes. Las notificaciones solo comparan
-  // en este estado; si no, una casa del equipo que llega un segundo después
-  // parecería "recién asignada".
-  const settled = assignedLoaded && teamLoaded && statusesLoaded && configLoaded && customersLoaded;
+  const assignedLoaded = assigned?.key === userId;
+  const teamLoaded = !teamKey || byTeam?.key === teamKey;
+  const merged = new Map<string, Property>();
+  [...(assignedLoaded ? assigned.list : []), ...(teamLoaded && byTeam ? byTeam.list : [])].forEach((p) => merged.set(p.id, p));
 
-  const value = useMemo<JobsValue>(() => {
-    const statusOf = (p: Property) => findRelation(statuses, p.statusId);
-    const allowed = housesPermission?.allowedStatusIds || [];
+  const statusOf = (p: Property) => findRelation(statuses, p.statusId);
+  const allowed = housesPermission?.allowedStatusIds || [];
+  const jobs = [...merged.values()].filter((p) => {
+    const st = statusOf(p);
+    if (statuses.length > 0 && !st) return false;
+    if (!isSuperAdmin && allowed.length > 0 && !allowed.includes(p.statusId) && !(st && allowed.includes(st.id))) return false;
+    return !st || isElementVisible(`status_${st.id}`);
+  });
 
-    const merged = new Map<string, Property>();
-    [...assigned, ...byTeam].forEach((p) => merged.set(p.id, p));
-
-    const jobs = [...merged.values()].filter((p) => {
-      // Igual que la web: las casas SIN status viven en "No Status" y no se
-      // muestran — pero solo si el catálogo ya cargó (si no, se vaciaría todo).
-      const st = statusOf(p);
-      if (statusesLoaded && statuses.length > 0 && !st) return false;
-      // Statuses permitidos para el rol (Roles & Permissions → Houses).
-      if (!isSuperAdmin && allowed.length > 0) {
-        if (!allowed.includes(p.statusId) && !(st && allowed.includes(st.id))) return false;
-      }
-      // Statuses ocultos para el rol en Configure Fields (filterByVisibleStatus de la web).
-      if (st && !isElementVisible(`status_${st.id}`)) return false;
-      return true;
+  const clientKeys = [...new Set([...jobs.map((j) => j.client), ...extraKeys.split('|')].filter(Boolean))].sort().join('|');
+  useEffect(() => {
+    if (!clientKeys || !online) return;
+    let cancelled = false;
+    getCustomersByKeys(clientKeys.split('|')).then((list) => {
+      if (!cancelled) setCustomers({ key: clientKeys, list });
     });
-
-    const clientName = (p: Property) => displayClientName(customers, p.client);
-    return {
-      jobs,
-      jobsLoaded: assignedLoaded,
-      settled,
-      getJob: (id) => merged.get(id),
-      clientName,
-      serviceName: (p) => {
-        const fromProducts = findRelation(products, p.serviceId);
-        return fromProducts ? fromProducts.name : getRelationName(services, p.serviceId, '—');
-      },
-      statusOf,
-      logLabel: (p) => (p.address ? `${clientName(p)} — ${p.address}` : clientName(p)),
+    return () => {
+      cancelled = true;
     };
-  }, [assigned, byTeam, assignedLoaded, settled, statuses, statusesLoaded, customers, products, services, isSuperAdmin, housesPermission, isElementVisible]);
+  }, [clientKeys, online]);
+
+  const customerList = customers?.list ?? [];
+  const clientName = (p: Property) => displayClientName(customerList, p.client, { unknown: t.unknownClient, deleted: t.deletedClient });
+  const value: JobsValue = {
+    jobs,
+    jobsLoaded: assignedLoaded,
+    settled: assignedLoaded && teamLoaded && catalogsLoaded && configLoaded && (!clientKeys || customers?.key === clientKeys),
+    getJob: (id) => jobs.find((j) => j.id === id),
+    clientName,
+    serviceName: (p) => (findRelation(products, p.serviceId) ?? findRelation(services, p.serviceId))?.name ?? '—',
+    statusOf,
+    logLabel: (p) => (p.address ? `${clientName(p)} — ${p.address}` : clientName(p)),
+    requestClients: (keys) => {
+      const next = [...new Set(keys.filter(Boolean))].sort().join('|');
+      if (next !== extraKeys) setExtraKeys(next);
+    },
+  };
 
   return <JobsContext.Provider value={value}>{children}</JobsContext.Provider>;
 }

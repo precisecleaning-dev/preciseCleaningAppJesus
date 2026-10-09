@@ -52,6 +52,9 @@
         }
       ],
       "expo-font"
-    ]
+    ],
+    "experiments": {
+      "reactCompiler": true
+    }
   }
 }

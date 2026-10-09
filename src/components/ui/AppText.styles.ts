@@ -1,8 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { accents, colors, type } from '../../theme/tokens';
 
-// Variantes tipográficas y tonos en hojas SEPARADAS: comparten nombres
-// ("body") y en una sola hoja el tono pisaría a la variante.
 export const styles = StyleSheet.create({
   ...type,
   center: { textAlign: 'center' },

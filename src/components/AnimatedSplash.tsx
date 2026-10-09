@@ -1,13 +1,3 @@
-// src/components/AnimatedSplash.tsx
-// ⭐ ANIMACIÓN DE APERTURA.
-//    1. La pantalla nativa (mismo azul y mismo logo) se quita apenas esta vista
-//       está montada, así no hay salto.
-//    2. El logo entra con resorte y un leve giro, un brillo lo barre en diagonal
-//       y aparecen chispas alrededor: la idea de "recién limpio".
-//    3. El nombre y el lema suben en cascada; abajo, tres puntos indican que
-//       se está preparando la sesión.
-//    4. Cuando todo está listo (fuentes + sesión) y pasó el tiempo mínimo, la
-//       capa se agranda un poco y se desvanece, mostrando la app debajo.
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as SplashScreen from 'expo-splash-screen';
@@ -36,7 +26,16 @@ const MIN_MS = 1900;
 function Sparkle({ delay, style }: { delay: number; style: object }) {
   const s = useSharedValue(0);
   useEffect(() => {
-    s.set(withDelay(delay, withSequence(withSpring(1.15, { damping: 7 }), withSpring(0.85), withRepeat(withSequence(withTiming(1.05, { duration: 700 }), withTiming(0.85, { duration: 700 })), -1, true))));
+    s.set(
+      withDelay(
+        delay,
+        withSequence(
+          withSpring(1.15, { damping: 7 }),
+          withSpring(0.85),
+          withRepeat(withSequence(withTiming(1.05, { duration: 700 }), withTiming(0.85, { duration: 700 })), -1, true),
+        ),
+      ),
+    );
   }, [delay, s]);
   const a = useAnimatedStyle(() => ({ opacity: Math.min(1, s.value), transform: [{ scale: s.value }] }));
   return (
@@ -56,9 +55,8 @@ function Dot({ i }: { i: number }) {
 }
 
 interface Props {
-  /** La app ya puede mostrarse (fuentes cargadas y sesión resuelta). */
   ready: boolean;
-  /** Las fuentes ya cargaron: el texto se pinta recién entonces (si no, saldría en la del sistema). */
+
   fontsReady: boolean;
   label: { name: string; tagline: string };
   onDone: () => void;
@@ -83,9 +81,11 @@ export default function AnimatedSplash({ ready, fontsReady, label, onDone }: Pro
 
   useEffect(() => {
     if (ready && minPassed) {
-      exit.set(withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) }, (finished) => {
-        if (finished) scheduleOnRN(onDone);
-      }));
+      exit.set(
+        withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) }, (finished) => {
+          if (finished) scheduleOnRN(onDone);
+        }),
+      );
     }
   }, [ready, minPassed, exit, onDone]);
 
@@ -95,8 +95,7 @@ export default function AnimatedSplash({ ready, fontsReady, label, onDone }: Pro
   }));
   const shineStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shine.value * 160 }, { rotate: '20deg' }] }));
   const layerStyle = useAnimatedStyle(() => ({ opacity: 1 - exit.value, transform: [{ scale: 1 + exit.value * 0.08 }] }));
-  // Continuidad con la pantalla nativa (azul liso + logo blanco al centro):
-  // el degradado aparece encima y el logo blanco se desvanece mientras entra la caja.
+
   const gradientStyle = useAnimatedStyle(() => ({ opacity: bg.value }));
   const nativeMarkStyle = useAnimatedStyle(() => ({ opacity: 1 - Math.min(1, logo.value * 1.6) }));
 

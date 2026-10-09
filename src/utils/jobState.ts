@@ -1,25 +1,15 @@
-// src/utils/jobState.ts
-// Estado de trabajo según el Work Log (mismo criterio que homeData.ts en la web).
 import type { Property } from '../types';
 import { DAY_MS, dateSortValue, startOfToday } from './dateFormat';
 
 export type WorkState = 'notStarted' | 'inProgress' | 'finished';
 
-export const workStateOf = (p: Property): WorkState =>
-  p.employeeFinishedAt ? 'finished' : p.employeeStartedAt ? 'inProgress' : 'notStarted';
+export const workStateOf = (p: Property): WorkState => (p.employeeFinishedAt ? 'finished' : p.employeeStartedAt ? 'inProgress' : 'notStarted');
 
 export type Segment = 'today' | 'upcoming' | 'history';
 
-/** Días hacia atrás que una casa sin terminar sigue apareciendo como "Atrasada" en Hoy. */
 const OVERDUE_WINDOW_DAYS = 14;
 
-/**
- * Reparte cada casa en una pestaña:
- *  · Hoy: agendada hoy, en curso, o atrasada (sin terminar, hasta 14 días).
- *  · Próximas: agendada a futuro y sin terminar.
- *  · Historial: terminadas, o atrasadas viejas (datos legacy sin Work Log).
- */
-export function segmentOf(p: Property, now = new Date()): Segment {
+function segmentOf(p: Property, now = new Date()): Segment {
   const state = workStateOf(p);
   if (state === 'finished') return 'history';
   if (state === 'inProgress') return 'today';
@@ -36,3 +26,16 @@ export const isOverdue = (p: Property, now = new Date()): boolean => {
   const t = dateSortValue(p.scheduleDate || p.receiveDate);
   return !!t && t < startOfToday(now);
 };
+
+const HISTORY_LIMIT = 100;
+
+export function groupJobs(jobs: Property[], now = new Date()): Record<Segment, Property[]> {
+  const out: Record<Segment, Property[]> = { today: [], upcoming: [], history: [] };
+  jobs.forEach((j) => out[segmentOf(j, now)].push(j));
+  const when = (j: Property) => dateSortValue(j.scheduleDate || j.receiveDate);
+  const running = (j: Property) => Number(workStateOf(j) === 'inProgress');
+  out.today.sort((a, b) => running(b) - running(a) || when(a) - when(b) || String(a.timeIn || '').localeCompare(String(b.timeIn || '')));
+  out.upcoming.sort((a, b) => when(a) - when(b));
+  out.history = out.history.sort((a, b) => when(b) - when(a)).slice(0, HISTORY_LIMIT);
+  return out;
+}

@@ -27,7 +27,16 @@ export const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: colors.border },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', rowGap: space.md, columnGap: space.sm },
   tile: { width: '48%', flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  doneBanner: { flexDirection: 'row', alignItems: 'center', gap: space.md, backgroundColor: accents.mint.soft, borderRadius: radius.xl, padding: space.md, borderWidth: 1, borderColor: accents.mint.solid },
+  doneBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    backgroundColor: accents.mint.soft,
+    borderRadius: radius.xl,
+    padding: space.md,
+    borderWidth: 1,
+    borderColor: accents.mint.solid,
+  },
   actionBar: {
     position: 'absolute',
     left: 0,

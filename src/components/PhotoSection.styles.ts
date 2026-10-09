@@ -14,7 +14,7 @@ export const styles = StyleSheet.create({
   thumbOverlay: {
     ...StyleSheet.absoluteFill,
     borderRadius: radius.md,
-    backgroundColor: 'rgba(11, 27, 51, 0.5)',
+    backgroundColor: colors.scrim,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,

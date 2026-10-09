@@ -1,9 +1,3 @@
-// src/types/index.ts
-// ⭐ Subconjunto de src/types/index.ts de la app WEB. Los nombres de campos y
-//    colecciones son EXACTAMENTE los mismos: ambas apps leen y escriben los
-//    mismos documentos de Firestore. Si la web agrega o renombra un campo que
-//    usa el empleado, hay que reflejarlo aquí.
-
 export interface Permission {
   module: string;
   canView: boolean;
@@ -11,9 +5,9 @@ export interface Permission {
   canEdit: boolean;
   canDelete: boolean;
   scope: 'All' | 'Own';
-  /** Solo en el módulo "Houses": statuses que el rol puede ver (vacío = todos). */
+
   allowedStatusIds?: string[];
-  /** Solo en el módulo "Houses": campos de solo lectura para el rol. */
+
   readOnlyFields?: string[];
 }
 
@@ -92,7 +86,6 @@ export interface Customer {
   name: string;
 }
 
-/** Registro de nómina — colección `payroll` (la misma que lee PayrollView en la web). */
 export interface PayrollRecord {
   id: string;
   propertyId: string;
@@ -111,7 +104,6 @@ export interface PayrollRecord {
   paymentDate?: string | null;
 }
 
-/** app_settings/photo_config — misma configuración que PhotoSettingsView en la web. */
 export interface PhotoConfig {
   allowTakePhoto: boolean;
   allowUploadFromDevice: boolean;
@@ -120,7 +112,6 @@ export interface PhotoConfig {
   maxSizeMB: number;
 }
 
-/** app_settings/houses_form_config — "Field & Button Visibility" de HousesView. */
 export interface FormVisibilityConfig {
   visibility?: Record<string, string[]>;
   readOnly?: Record<string, string[]>;

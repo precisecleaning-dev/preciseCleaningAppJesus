@@ -1,19 +1,4 @@
-// src/theme/tokens.ts
-// ⭐ SISTEMA DE DISEÑO — Precise Cleaning (app de empleados).
-//
-//    Dirección: el azul de la marca Precise Cleaning como base, llevado a un
-//    degradado azul → índigo en los encabezados, y una paleta de ACENTOS con
-//    significado fijo para que el color "hable" en toda la app:
-//
-//      sky     → por hacer / agenda        violet → en curso
-//      mint    → terminado / pagado        amber  → fotos y pendientes
-//      coral   → atrasado / alertas        teal   → notas y mensajes
-//
-//    Regla: un color de acento NUNCA se usa como decoración suelta; siempre
-//    marca uno de esos significados. Así se lee el estado de un vistazo.
-//    TODO valor fijo de color, tamaño o tipografía sale de este archivo.
-
-export const palette = {
+const palette = {
   brand: '#1570EF',
   brandDeep: '#0B4FC4',
   indigo: '#4F46E5',
@@ -28,7 +13,6 @@ export const palette = {
   black: '#000000',
 };
 
-/** Acentos semánticos: color fuerte + tinte suave para fondos. */
 export const accents = {
   sky: { solid: '#0EA5E9', soft: '#E0F2FE', ink: '#0369A1' },
   violet: { solid: '#8B5CF6', soft: '#EDE9FE', ink: '#6D28D9' },
@@ -44,7 +28,6 @@ export type AccentName = keyof typeof accents;
 export const colors = {
   primary: palette.brand,
   primaryDark: palette.brandDeep,
-  primarySoft: accents.brand.soft,
   bg: palette.canvas,
   surface: palette.surface,
   border: palette.line,
@@ -52,24 +35,27 @@ export const colors = {
   textBody: palette.ink2,
   textMuted: palette.muted,
   textSoft: palette.soft,
-  success: accents.mint.solid,
-  successSoft: accents.mint.soft,
-  warning: accents.amber.ink,
-  warningSoft: accents.amber.soft,
   danger: accents.coral.solid,
-  dangerSoft: accents.coral.soft,
   white: palette.white,
   overlay: 'rgba(11, 27, 51, 0.88)',
   glass: 'rgba(255, 255, 255, 0.16)',
   glassBorder: 'rgba(255, 255, 255, 0.28)',
   onBrandMuted: 'rgba(255, 255, 255, 0.78)',
   shadow: '#1B2F5C',
+  field: '#F8FAFD',
+  track: '#E9EEF6',
+  trackStrong: '#DCE3EE',
+  skeleton: '#E8EEF7',
+  idle: '#EEF2F8',
+  unread: '#F2F7FF',
+  scrim: 'rgba(11, 27, 51, 0.5)',
+  orb: 'rgba(255, 255, 255, 0.09)',
+  orbFaint: 'rgba(255, 255, 255, 0.08)',
+  onBrandDot: 'rgba(255, 255, 255, 0.85)',
 };
 
-/** Degradados (siempre de arriba-izquierda a abajo-derecha). */
 export const gradients = {
   brand: ['#1570EF', '#4F46E5'] as const,
-  brandSoft: ['#2B7FFF', '#6D5DF6'] as const,
   mint: ['#10B981', '#0EA5E9'] as const,
   violet: ['#8B5CF6', '#EC4899'] as const,
   amber: ['#F59E0B', '#F43F5E'] as const,
@@ -80,9 +66,7 @@ export const space = { xxs: 4, xs: 6, sm: 10, md: 14, lg: 20, xl: 28, xxl: 40 };
 
 export const radius = { sm: 10, md: 14, lg: 20, xl: 28, pill: 999 };
 
-/** Plus Jakarta Sans: una familia por peso (en RN fontWeight no elige archivo). */
 export const fonts = {
-  regular: 'PlusJakartaSans_400Regular',
   medium: 'PlusJakartaSans_500Medium',
   semibold: 'PlusJakartaSans_600SemiBold',
   bold: 'PlusJakartaSans_700Bold',
@@ -104,24 +88,11 @@ export const type = {
 
 export type TypeVariant = keyof typeof type;
 
-/** Sombras suaves y frías (tinte azul de la marca, no gris puro). */
 export const shadow = {
   card: { shadowColor: colors.shadow, shadowOpacity: 0.08, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 3 },
   raised: { shadowColor: colors.shadow, shadowOpacity: 0.16, shadowRadius: 22, shadowOffset: { width: 0, height: 12 }, elevation: 8 },
 };
 
-/** 48 px: mínimo táctil de Material / WCAG 2.2. */
 export const touchMin = 48;
 
-/** Duraciones y resortes compartidos: el movimiento se siente igual en toda la app. */
-export const motion = {
-  fast: 160,
-  base: 260,
-  slow: 420,
-  spring: { damping: 16, stiffness: 180, mass: 0.9 },
-  springSoft: { damping: 20, stiffness: 120 },
-  stagger: 55,
-};
-
-/** Espacio libre al final de las listas para que la barra flotante no tape contenido. */
 export const TAB_BAR_SPACE = 120;

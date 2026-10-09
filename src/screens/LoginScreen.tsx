@@ -1,22 +1,17 @@
-// src/screens/LoginScreen.tsx
-// ⭐ Acceso con el mismo correo y contraseña de la web (Firebase Auth).
-//    Encabezado curvo con degradado y logo, tarjeta que entra con resorte y
-//    un "temblor" del formulario si el correo o la contraseña no coinciden.
-import { sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
 import { useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, View, type TextInput } from 'react-native';
-import Animated, { FadeInDown, FadeInUp, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppText from '../components/ui/AppText';
 import Button from '../components/ui/Button';
 import TextField from '../components/ui/TextField';
-import { auth } from '../config/firebase';
 import { useLanguage } from '../context/LanguageContext';
+import { resetPassword, signIn as authSignIn } from '../services/sessionService';
 import { colors, gradients } from '../theme/tokens';
+import { errorCode } from '../utils/ids';
 import { styles } from './LoginScreen.styles';
 
 export default function LoginScreen() {
@@ -28,38 +23,29 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const passRef = useRef<TextInput>(null);
-  const shake = useSharedValue(0);
-  const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shake.value }] }));
 
   const fail = (msg: string) => {
     setError(msg);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
-    shake.set(withSequence(withTiming(-10, { duration: 50 }), withTiming(10, { duration: 50 }), withTiming(-6, { duration: 50 }), withTiming(6, { duration: 50 }), withTiming(0, { duration: 50 })));
   };
 
-  const signIn = async () => {
+  const signIn = () => {
     setError('');
     setLoading(true);
-    try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-    } catch (err) {
-      console.error('Login error:', err);
-      fail(t.loginError);
-    } finally {
-      setLoading(false);
-    }
+    authSignIn(email, password)
+      .then(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined))
+      .catch((err) => {
+        console.error('Login error:', err);
+        fail(t.loginError);
+      })
+      .then(() => setLoading(false));
   };
 
-  const reset = async () => {
-    const target = email.trim();
-    if (!target) return fail(t.enterEmailFirst);
-    try {
-      await sendPasswordResetEmail(auth, target);
-      Alert.alert(t.appName, t.resetSent);
-    } catch (err) {
-      Alert.alert(t.error, String((err as Error)?.message || err));
-    }
+  const reset = () => {
+    if (!email.trim()) return fail(t.enterEmailFirst);
+    resetPassword(email)
+      .then(() => Alert.alert(t.appName, t.resetSent))
+      .catch((err) => Alert.alert(t.error, errorCode(err)));
   };
 
   return (
@@ -68,20 +54,20 @@ export default function LoginScreen() {
         <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.hero, { paddingTop: insets.top + 36 }]}>
           <View style={[styles.orb, styles.orbA]} />
           <View style={[styles.orb, styles.orbB]} />
-          <Animated.View entering={FadeInUp.springify().damping(14)} style={styles.logoBox}>
+          <View style={styles.logoBox}>
             <Image source={require('../../assets/logo-mark.png')} style={styles.logo} contentFit="contain" />
-          </Animated.View>
-          <Animated.View entering={FadeInUp.delay(120).springify().damping(16)}>
+          </View>
+          <View>
             <AppText variant="display" tone="inverse" center>
               {t.appName}
             </AppText>
             <AppText variant="label" tone="inverseMuted" center>
               {t.appTagline}
             </AppText>
-          </Animated.View>
+          </View>
         </LinearGradient>
 
-        <Animated.View entering={FadeInDown.delay(200).springify().damping(16)} style={[styles.card, shakeStyle]}>
+        <View style={styles.card}>
           <View style={styles.cardHead}>
             <AppText variant="h1">{t.loginTitle}</AppText>
             <AppText variant="small" tone="muted">
@@ -122,11 +108,11 @@ export default function LoginScreen() {
             }
           />
           {!!error && (
-            <Animated.View entering={FadeInDown.duration(200)}>
+            <View>
               <AppText variant="small" tone="danger">
                 {error}
               </AppText>
-            </Animated.View>
+            </View>
           )}
           <Button label={t.signIn} onPress={signIn} loading={loading} disabled={!email || !password} size="lg" />
           <Pressable onPress={reset} accessibilityRole="link" style={styles.link}>
@@ -134,7 +120,7 @@ export default function LoginScreen() {
               {t.forgotPassword}
             </AppText>
           </Pressable>
-        </Animated.View>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

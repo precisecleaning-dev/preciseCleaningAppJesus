@@ -10,5 +10,5 @@ export const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
   step: { flex: 1, alignItems: 'center', gap: space.xxs },
   node: { width: NODE, height: NODE, borderRadius: NODE / 2, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: colors.surface },
-  nodeIdle: { backgroundColor: '#EEF2F8' },
+  nodeIdle: { backgroundColor: colors.idle },
 });

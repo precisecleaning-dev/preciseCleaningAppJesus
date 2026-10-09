@@ -1,9 +1,4 @@
-// src/components/JobCard.tsx
-// ⭐ Tarjeta de casa. Franja izquierda con el color del status que configuró la
-//    oficina, burbuja con el color del estado de trabajo, y chips de horario,
-//    servicio y fotos. Memoizada: la lista no se re-dibuja entera en cada cambio.
 import { Camera, ChevronRight, Clock, MapPin, Sparkles } from 'lucide-react-native';
-import { memo } from 'react';
 import { View } from 'react-native';
 import { useJobs } from '../context/JobsContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -17,7 +12,7 @@ import { styles } from './JobCard.styles';
 import AppText from './ui/AppText';
 import Chip from './ui/Chip';
 import IconBubble from './ui/IconBubble';
-import PressableScale from './ui/PressableScale';
+import Touchable from './ui/Touchable';
 
 interface Props {
   job: Property;
@@ -25,7 +20,7 @@ interface Props {
   onPress: (job: Property) => void;
 }
 
-function JobCard({ job, pending, onPress }: Props) {
+export default function JobCard({ job, pending, onPress }: Props) {
   const { t } = useLanguage();
   const { clientName, serviceName, statusOf } = useJobs();
   const { isElementVisible } = useSession();
@@ -37,7 +32,7 @@ function JobCard({ job, pending, onPress }: Props) {
   const client = clientName(job);
 
   return (
-    <PressableScale onPress={() => onPress(job)} style={styles.card} scaleTo={0.97} accessibilityLabel={`${client}, ${job.address}, ${v.label}`}>
+    <Touchable onPress={() => onPress(job)} style={styles.card} accessibilityLabel={`${client}, ${job.address}, ${v.label}`}>
       <View style={[styles.stripe, { backgroundColor: stripe }]} />
       <View style={styles.body}>
         <View style={styles.top}>
@@ -57,7 +52,11 @@ function JobCard({ job, pending, onPress }: Props) {
         </View>
 
         <View style={styles.chips}>
-          <Chip icon={Clock} accent="sky" label={[formatDate(job.scheduleDate || job.receiveDate) || t.noDate, isElementVisible('timeIn') ? time : ''].filter(Boolean).join(' · ')} />
+          <Chip
+            icon={Clock}
+            accent="sky"
+            label={[formatDate(job.scheduleDate || job.receiveDate) || t.noDate, isElementVisible('timeIn') ? time : ''].filter(Boolean).join(' · ')}
+          />
           {isElementVisible('serviceId') && <Chip icon={Sparkles} accent="teal" label={serviceName(job)} />}
         </View>
 
@@ -75,8 +74,6 @@ function JobCard({ job, pending, onPress }: Props) {
           )}
         </View>
       </View>
-    </PressableScale>
+    </Touchable>
   );
 }
-
-export default memo(JobCard);

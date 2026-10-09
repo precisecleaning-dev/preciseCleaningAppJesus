@@ -1,6 +1,3 @@
-// src/components/ScreenTopBar.tsx
-// Encabezado compacto con degradado para pantallas internas (detalle, avisos):
-// botón atrás, título y una acción opcional a la derecha.
 import { ChevronLeft } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';

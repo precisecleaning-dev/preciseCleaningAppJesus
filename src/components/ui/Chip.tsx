@@ -1,10 +1,6 @@
-// src/components/ui/Chip.tsx
-// Etiqueta de estado. Dos modos:
-//  · accent: uno de los acentos semánticos de la app (en curso, terminada…).
-//  · color: color que viene de Firestore (status/equipo configurado por la oficina).
-// `onDark` la adapta a los encabezados con degradado (vidrio + texto blanco).
 import type { LucideIcon } from 'lucide-react-native';
 import { View } from 'react-native';
+import { inkText, softBg, solidBg } from '../../theme/accentStyles';
 import { accents, colors, type AccentName } from '../../theme/tokens';
 import { safeColor, withAlpha } from '../../utils/color';
 import AppText from './AppText';
@@ -20,20 +16,20 @@ interface Props {
 }
 
 export default function Chip({ label, accent = 'brand', color, icon: Icon, solid, onDark }: Props) {
-  const a = accents[accent];
-  let bg: string;
-  let fg: string;
   if (color) {
-    bg = onDark ? colors.glass : withAlpha(color, 0.14) || '#EEF2F8';
-    fg = onDark ? colors.white : colors.text;
-  } else {
-    bg = solid ? a.solid : a.soft;
-    fg = solid ? colors.white : a.ink;
+    return (
+      <View style={[styles.chip, onDark ? styles.glass : { backgroundColor: withAlpha(color, 0.14) || colors.idle }]}>
+        <View style={[styles.dot, { backgroundColor: safeColor(color, accents[accent].solid) }, onDark && styles.dotRing]} />
+        <AppText variant="caption" numberOfLines={1} style={[styles.text, onDark ? styles.textOnDark : styles.textDefault]}>
+          {label}
+        </AppText>
+      </View>
+    );
   }
   return (
-    <View style={[styles.chip, onDark && styles.glass, { backgroundColor: bg }]}>
-      {color ? <View style={[styles.dot, { backgroundColor: safeColor(color, a.solid) }, onDark && styles.dotRing]} /> : Icon ? <Icon size={13} color={fg} strokeWidth={2.4} /> : null}
-      <AppText variant="caption" numberOfLines={1} style={[styles.text, { color: fg }]}>
+    <View style={[styles.chip, solid ? solidBg[accent] : softBg[accent]]}>
+      {Icon && <Icon size={13} color={solid ? colors.white : accents[accent].ink} strokeWidth={2.4} />}
+      <AppText variant="caption" numberOfLines={1} style={[styles.text, solid ? styles.textOnDark : inkText[accent]]}>
         {label}
       </AppText>
     </View>
