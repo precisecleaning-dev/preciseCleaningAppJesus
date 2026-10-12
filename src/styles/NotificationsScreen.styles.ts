@@ -3,7 +3,7 @@ import { accents, colors, radius, shadow, space } from '../theme/tokens';
 
 export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  list: { padding: space.md, gap: space.sm, paddingBottom: space.xxl },
+  list: { padding: space.md, gap: space.sm },
   section: { marginTop: space.sm, marginBottom: space.xxs, marginLeft: space.xxs },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm, backgroundColor: colors.surface, borderRadius: radius.lg, padding: space.md, ...shadow.card },
   unread: { backgroundColor: colors.unread, borderWidth: 1, borderColor: accents.brand.soft },

@@ -22,27 +22,26 @@ import NoteThread from '../components/NoteThread';
 import PhotoSection from '../components/PhotoSection';
 import ScreenTopBar from '../components/ScreenTopBar';
 import StatusScrim from '../components/StatusScrim';
-import WorkProgress from '../components/WorkProgress';
 import AppText from '../components/ui/AppText';
 import Button from '../components/ui/Button';
 import Chip from '../components/ui/Chip';
 import EmptyState from '../components/ui/EmptyState';
 import IconBubble from '../components/ui/IconBubble';
 import Touchable from '../components/ui/Touchable';
+import WorkProgress from '../components/WorkProgress';
+import { fmt, texts } from '../constants/texts';
 import { useCatalogs } from '../context/CatalogsContext';
 import { useJobs } from '../context/JobsContext';
-import { useLanguage } from '../context/LanguageContext';
 import { useOutbox } from '../context/OutboxContext';
 import { usePhotoQueue } from '../context/PhotoQueueContext';
 import { useCurrentUser, useSession } from '../context/SessionContext';
-import { fmt } from '../i18n/strings';
 import type { RootStackParams } from '../navigation/types';
 import { canUndoMark, missingPhotoKinds } from '../services/jobsService';
+import { styles } from '../styles/JobDetailScreen.styles';
 import { accents, colors, gradients, type AccentName } from '../theme/tokens';
 import { formatDate, formatDateTime } from '../utils/dateFormat';
 import { jobVisual } from '../utils/jobVisual';
 import { findRelation } from '../utils/relations';
-import { styles } from './JobDetailScreen.styles';
 
 type Props = NativeStackScreenProps<RootStackParams, 'JobDetail'>;
 
@@ -55,7 +54,6 @@ const confirm = (title: string, message: string, okLabel: string, cancelLabel: s
   );
 
 export default function JobDetailScreen({ route, navigation }: Props) {
-  const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const user = useCurrentUser();
   const { isSuperAdmin, housesPermission, isElementVisible, isFieldReadOnly } = useSession();
@@ -78,7 +76,7 @@ export default function JobDetailScreen({ route, navigation }: Props) {
   if (!job) {
     return (
       <View style={styles.screen}>
-        <ScreenTopBar title={t.house} onBack={() => navigation.goBack()} />
+        <ScreenTopBar title={texts.house} onBack={() => navigation.goBack()} />
         <EmptyState
           icon={MapPinOff}
           gradient={gradients.amber}
@@ -87,13 +85,13 @@ export default function JobDetailScreen({ route, navigation }: Props) {
             { icon: Clock, accent: 'sky' },
             { icon: Users, accent: 'violet' },
           ]}
-          title={t.jobGone}
+          title={texts.jobGone}
         />
       </View>
     );
   }
 
-  const v = jobVisual(job, t);
+  const v = jobVisual(job);
   const status = statusOf(job);
   const team = findRelation(teams, job.teamId);
   const priority = findRelation(priorities, job.priorityId);
@@ -108,22 +106,22 @@ export default function JobDetailScreen({ route, navigation }: Props) {
 
   const onStart = async () => {
     if (started) {
-      if (!canUndoMark(job.employeeStartedById, job.employeeStartedBy, user, isSuperAdmin)) return Alert.alert(t.undoStart, t.onlyOwnerCanUndo);
-      if (await confirm(t.undoStart, t.confirmUndoStart, t.confirm, t.cancel)) mark(job, 'undoStart', label);
+      if (!canUndoMark(job.employeeStartedById, job.employeeStartedBy, user, isSuperAdmin)) return Alert.alert(texts.undoStart, texts.onlyOwnerCanUndo);
+      if (await confirm(texts.undoStart, texts.confirmUndoStart, texts.confirm, texts.cancel)) mark(job, 'undoStart', label);
       return;
     }
-    if (await confirm(t.startJob, t.confirmStart, t.startJob, t.cancel)) mark(job, 'start', label);
+    if (await confirm(texts.startJob, texts.confirmStart, texts.startJob, texts.cancel)) mark(job, 'start', label);
   };
 
   const onFinish = async () => {
     if (finished) {
-      if (!canUndoMark(job.employeeFinishedById, job.employeeFinishedBy, user, isSuperAdmin)) return Alert.alert(t.undoFinish, t.onlyOwnerCanUndo);
-      if (await confirm(t.undoFinish, t.confirmUndoFinish, t.confirm, t.cancel)) mark(job, 'undoFinish', label);
+      if (!canUndoMark(job.employeeFinishedById, job.employeeFinishedBy, user, isSuperAdmin)) return Alert.alert(texts.undoFinish, texts.onlyOwnerCanUndo);
+      if (await confirm(texts.undoFinish, texts.confirmUndoFinish, texts.confirm, texts.cancel)) mark(job, 'undoFinish', label);
       return;
     }
-    if (!started) return Alert.alert(t.finishJob, t.startFirst);
-    if (missing.length > 0) return Alert.alert(t.finishJob, fmt(t.missingPhotos, { list: missing.join(' / ') }));
-    if (await confirm(t.finishJob, t.confirmFinish, t.finishJob, t.cancel)) mark(job, 'finish', label);
+    if (!started) return Alert.alert(texts.finishJob, texts.startFirst);
+    if (missing.length > 0) return Alert.alert(texts.finishJob, fmt(texts.missingPhotos, { list: missing.join(' / ') }));
+    if (await confirm(texts.finishJob, texts.confirmFinish, texts.finishJob, texts.cancel)) mark(job, 'finish', label);
   };
 
   const openMaps = () => {
@@ -134,13 +132,13 @@ export default function JobDetailScreen({ route, navigation }: Props) {
 
   type Tile = { k: string; icon: LucideIcon; accent: AccentName; label: string; value: string };
   const allTiles: Tile[] = [
-    { k: 'scheduleDate', icon: CalendarDays, accent: 'sky', label: t.scheduleDate, value: formatDate(job.scheduleDate || job.receiveDate) || t.noDate },
-    { k: 'timeIn', icon: Clock, accent: 'violet', label: t.time, value: [job.timeIn, job.timeOut].filter(Boolean).join(' – ') },
-    { k: 'serviceId', icon: Sparkles, accent: 'teal', label: t.service, value: serviceName(job) },
-    { k: 'teamId', icon: Users, accent: 'brand', label: t.team, value: team?.name || '' },
-    { k: 'rooms', icon: BedDouble, accent: 'amber', label: t.rooms, value: job.rooms },
-    { k: 'bathrooms', icon: Bath, accent: 'sky', label: t.bathrooms, value: job.bathrooms },
-    { k: 'priorityId', icon: Flag, accent: 'coral', label: t.priority, value: priority?.name || '' },
+    { k: 'scheduleDate', icon: CalendarDays, accent: 'sky', label: texts.scheduleDate, value: formatDate(job.scheduleDate || job.receiveDate) || texts.noDate },
+    { k: 'timeIn', icon: Clock, accent: 'violet', label: texts.time, value: [job.timeIn, job.timeOut].filter(Boolean).join(' – ') },
+    { k: 'serviceId', icon: Sparkles, accent: 'teal', label: texts.service, value: serviceName(job) },
+    { k: 'teamId', icon: Users, accent: 'brand', label: texts.team, value: team?.name || '' },
+    { k: 'rooms', icon: BedDouble, accent: 'amber', label: texts.rooms, value: job.rooms },
+    { k: 'bathrooms', icon: Bath, accent: 'sky', label: texts.bathrooms, value: job.bathrooms },
+    { k: 'priorityId', icon: Flag, accent: 'coral', label: texts.priority, value: priority?.name || '' },
   ];
   const tiles = allTiles.filter((d) => isElementVisible(d.k) && String(d.value || '').trim() !== '');
 
@@ -163,10 +161,10 @@ export default function JobDetailScreen({ route, navigation }: Props) {
             <View style={styles.headChips}>
               {isElementVisible('statusId') && status && <Chip label={status.name} color={status.color} onDark />}
               <Chip label={v.label} accent={v.accent} solid />
-              <Touchable onPress={openMaps} style={styles.mapsBtn} accessibilityRole="link" accessibilityLabel={t.openMaps}>
+              <Touchable onPress={openMaps} style={styles.mapsBtn} accessibilityRole="link" accessibilityLabel={texts.openMaps}>
                 <Navigation size={15} color={colors.white} />
                 <AppText variant="caption" tone="inverse">
-                  {t.openMaps}
+                  {texts.openMaps}
                 </AppText>
               </Touchable>
             </View>
@@ -178,12 +176,12 @@ export default function JobDetailScreen({ route, navigation }: Props) {
                 <View style={styles.logs}>
                   {started && (
                     <AppText variant="caption" tone="muted">
-                      {fmt(t.startedBy, { name: job.employeeStartedBy || '', when: formatDateTime(job.employeeStartedAt) })}
+                      {fmt(texts.startedBy, { name: job.employeeStartedBy || '', when: formatDateTime(job.employeeStartedAt) })}
                     </AppText>
                   )}
                   {finished && (
                     <AppText variant="caption" tone="muted">
-                      {fmt(t.finishedBy, { name: job.employeeFinishedBy || '', when: formatDateTime(job.employeeFinishedAt) })}
+                      {fmt(texts.finishedBy, { name: job.employeeFinishedBy || '', when: formatDateTime(job.employeeFinishedAt) })}
                     </AppText>
                   )}
                 </View>
@@ -195,10 +193,10 @@ export default function JobDetailScreen({ route, navigation }: Props) {
                 <IconBubble icon={CircleCheckBig} accent="mint" solid size="lg" />
                 <View style={styles.flex}>
                   <AppText variant="h2" tone="success">
-                    {t.jobDoneTitle}
+                    {texts.jobDoneTitle}
                   </AppText>
                   <AppText variant="small" tone="body">
-                    {t.jobDoneBody}
+                    {texts.jobDoneBody}
                   </AppText>
                 </View>
               </View>
@@ -206,12 +204,12 @@ export default function JobDetailScreen({ route, navigation }: Props) {
 
             {showPhotos && (
               <View style={[styles.card, styles.gapLg]}>
-                <AppText variant="h2">{t.photos}</AppText>
+                <AppText variant="h2">{texts.photos}</AppText>
                 {!photosUnlocked && (
                   <View style={styles.lock}>
                     <Lock size={16} color={accents.amber.ink} />
                     <AppText variant="small" tone="warning" style={styles.flex}>
-                      {t.photosLocked}
+                      {texts.photosLocked}
                     </AppText>
                   </View>
                 )}
@@ -224,7 +222,7 @@ export default function JobDetailScreen({ route, navigation }: Props) {
             {tiles.length > 0 && (
               <View style={styles.card}>
                 <AppText variant="h2" style={styles.cardTitle}>
-                  {t.details}
+                  {texts.details}
                 </AppText>
                 <View style={styles.tiles}>
                   {tiles.map((d) => (
@@ -247,11 +245,11 @@ export default function JobDetailScreen({ route, navigation }: Props) {
             {(isElementVisible('note') || isElementVisible('employeeNote')) && (
               <View style={[styles.card, styles.gapLg]}>
                 {isElementVisible('note') && (
-                  <NoteThread title={t.generalNote} field="note" legacyText={job.note || ''} history={job.notesHistory || []} myEmail={user.email} canWrite={false} />
+                  <NoteThread title={texts.generalNote} field="note" legacyText={job.note || ''} history={job.notesHistory || []} myEmail={user.email} canWrite={false} />
                 )}
                 {isElementVisible('employeeNote') && (
                   <NoteThread
-                    title={t.employeeNote}
+                    title={texts.employeeNote}
                     field="employeeNote"
                     legacyText={job.employeeNote || ''}
                     history={job.notesHistory || []}
@@ -269,22 +267,29 @@ export default function JobDetailScreen({ route, navigation }: Props) {
 
       {(showStart || showFinish) && !keyboardOpen && (
         <View style={[styles.actionBar, { paddingBottom: Math.max(insets.bottom, 14) }]}>
-          {!started && !finished && showStart && <Button label={t.startJob} size="lg" onPress={onStart} icon={<CirclePlay size={22} color={colors.white} />} />}
+          {!started && !finished && showStart && <Button label={texts.startJob} size="lg" onPress={onStart} icon={<CirclePlay size={22} color={colors.white} />} />}
           {started && !finished && (
             <>
               {showFinish && (
-                <Button label={t.finishJob} size="lg" variant="success" onPress={onFinish} disabled={missing.length > 0} icon={<CircleCheckBig size={22} color={colors.white} />} />
+                <Button
+                  label={texts.finishJob}
+                  size="lg"
+                  variant="success"
+                  onPress={onFinish}
+                  disabled={missing.length > 0}
+                  icon={<CircleCheckBig size={22} color={colors.white} />}
+                />
               )}
               {missing.length > 0 && (
                 <AppText variant="caption" tone="warning" center>
-                  {fmt(t.missingPhotos, { list: missing.join(' / ') })}
-                  {queuedCount > 0 ? ` · ${fmt(t.queued, { n: queuedCount })}` : ''}
+                  {fmt(texts.missingPhotos, { list: missing.join(' / ') })}
+                  {queuedCount > 0 ? ` · ${fmt(texts.queued, { n: queuedCount })}` : ''}
                 </AppText>
               )}
-              {showStart && <Button label={t.undoStart} size="sm" variant="ghost" onPress={onStart} icon={<RotateCcw size={16} color={colors.primary} />} />}
+              {showStart && <Button label={texts.undoStart} size="sm" variant="ghost" onPress={onStart} icon={<RotateCcw size={16} color={colors.primary} />} />}
             </>
           )}
-          {finished && showFinish && <Button label={t.undoFinish} size="sm" variant="ghost" onPress={onFinish} icon={<RotateCcw size={16} color={colors.primary} />} />}
+          {finished && showFinish && <Button label={texts.undoFinish} size="sm" variant="ghost" onPress={onFinish} icon={<RotateCcw size={16} color={colors.primary} />} />}
         </View>
       )}
     </View>

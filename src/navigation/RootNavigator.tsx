@@ -8,9 +8,9 @@ import LoadingScreen from '../components/LoadingScreen';
 import NotificationToast from '../components/NotificationToast';
 import OfflineBanner from '../components/OfflineBanner';
 import TabBar from '../components/ui/TabBar';
+import { texts } from '../constants/texts';
 import { CatalogsProvider } from '../context/CatalogsContext';
 import { JobsProvider } from '../context/JobsContext';
-import { useLanguage } from '../context/LanguageContext';
 import { NotificationsProvider } from '../context/NotificationsContext';
 import { OutboxProvider } from '../context/OutboxContext';
 import { PayrollProvider } from '../context/PayrollContext';
@@ -40,8 +40,7 @@ const theme: Theme = {
 const TAB_ICONS = { Home: House, Payroll: Wallet, Profile: User };
 
 function MainTabs() {
-  const { t } = useLanguage();
-  const labels = { Home: t.tabHome, Payroll: t.tabPayroll, Profile: t.tabProfile };
+  const labels = { Home: texts.tabHome, Payroll: texts.tabPayroll, Profile: texts.tabProfile };
   return (
     <Tabs.Navigator screenOptions={{ headerShown: false }} tabBar={(props) => <TabBar {...props} icons={TAB_ICONS} labels={labels} />}>
       <Tabs.Screen name="Home" component={HomeScreen} />
@@ -67,10 +66,9 @@ export function useOnboarded(): [boolean | null, () => void] {
 
 export default function RootNavigator({ onboarded, finishOnboarding }: { onboarded: boolean | null; finishOnboarding: () => void }) {
   const { state } = useSession();
-  const { t } = useLanguage();
 
-  if (state === 'signingOut') return <LoadingScreen label={t.signingOut} />;
-  if (state === 'checking' || state === 'loadingProfile' || onboarded === null) return <LoadingScreen label={t.loadingSession} />;
+  if (state === 'signingOut') return <LoadingScreen label={texts.signingOut} />;
+  if (state === 'checking' || state === 'loadingProfile' || onboarded === null) return <LoadingScreen label={texts.loadingSession} />;
   if (state === 'signedOut') return onboarded ? <LoginScreen /> : <OnboardingScreen onFinish={finishOnboarding} />;
   if (state === 'noProfile' || state === 'inactive') return <BlockedScreen reason={state} />;
 

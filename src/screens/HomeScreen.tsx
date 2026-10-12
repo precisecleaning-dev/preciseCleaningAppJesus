@@ -1,9 +1,8 @@
-import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Bell, CalendarCheck, CalendarClock, CalendarDays, CirclePlay, CloudUpload, History, House, Sparkles, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
-import { useNow } from '../hooks/useNow';
 import { FlatList, View } from 'react-native';
 import JobCard from '../components/JobCard';
 import NextJobCard from '../components/NextJobCard';
@@ -14,24 +13,25 @@ import GradientHeader from '../components/ui/GradientHeader';
 import IconButton from '../components/ui/IconButton';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { JobCardSkeleton } from '../components/ui/Skeleton';
+import { texts } from '../constants/texts';
 import { useJobs } from '../context/JobsContext';
-import { useLanguage } from '../context/LanguageContext';
 import { useNotifications } from '../context/NotificationsContext';
 import { usePhotoQueue } from '../context/PhotoQueueContext';
 import { useCurrentUser } from '../context/SessionContext';
-import type { Strings } from '../i18n/strings';
+import { useNow } from '../hooks/useNow';
+import { useTabBarSpace } from '../hooks/useTabBarSpace';
 import type { RootStackParams, TabParams } from '../navigation/types';
+import { styles } from '../styles/HomeScreen.styles';
 import { solidBg } from '../theme/accentStyles';
 import { colors, gradients, type AccentName } from '../theme/tokens';
 import type { Property } from '../types';
 import { formatDate } from '../utils/dateFormat';
 import { initialsOf } from '../utils/ids';
 import { groupJobs, workStateOf, type Segment } from '../utils/jobState';
-import { styles } from './HomeScreen.styles';
 
 type Props = CompositeScreenProps<BottomTabScreenProps<TabParams, 'Home'>, NativeStackScreenProps<RootStackParams>>;
 
-const greeting = (t: Strings, h: number) => (h < 12 ? t.greetingMorning : h < 19 ? t.greetingAfternoon : t.greetingEvening);
+const greeting = (h: number) => (h < 12 ? texts.greetingMorning : h < 19 ? texts.greetingAfternoon : texts.greetingEvening);
 
 function Stat({ icon: Icon, value, label, accent }: { icon: LucideIcon; value: number; label: string; accent: AccentName }) {
   return (
@@ -48,7 +48,6 @@ function Stat({ icon: Icon, value, label, accent }: { icon: LucideIcon; value: n
 }
 
 export default function HomeScreen({ navigation }: Props) {
-  const { t } = useLanguage();
   const user = useCurrentUser();
   const { jobs, jobsLoaded } = useJobs();
   const { queue, pendingFor } = usePhotoQueue();
@@ -56,19 +55,20 @@ export default function HomeScreen({ navigation }: Props) {
   const [segment, setSegment] = useState<Segment>('today');
 
   const now = useNow();
+  const tabBarSpace = useTabBarSpace();
   const grouped = groupJobs(jobs, now);
 
   const inProgress = grouped.today.filter((j) => workStateOf(j) === 'inProgress').length;
   const nextJob = grouped.today.find((j) => workStateOf(j) !== 'finished') ?? null;
   const openJob = (j: Property) => navigation.navigate('JobDetail', { jobId: j.id });
 
-  const today = `${t.weekdays[now.getDay()]}, ${formatDate(now)}`;
+  const today = `${texts.weekdays[now.getDay()]}, ${formatDate(now)}`;
   const initials = initialsOf(user);
 
   const empty = {
-    today: { title: t.noJobsTodayTitle, body: t.noJobsTodayBody, icon: CalendarCheck, gradient: gradients.brand },
-    upcoming: { title: t.noUpcomingTitle, body: t.noUpcomingBody, icon: CalendarClock, gradient: gradients.violet },
-    history: { title: t.noHistoryTitle, body: t.noHistoryBody, icon: History, gradient: gradients.mint },
+    today: { title: texts.noJobsTodayTitle, body: texts.noJobsTodayBody, icon: CalendarCheck, gradient: gradients.brand },
+    upcoming: { title: texts.noUpcomingTitle, body: texts.noUpcomingBody, icon: CalendarClock, gradient: gradients.violet },
+    history: { title: texts.noHistoryTitle, body: texts.noHistoryBody, icon: History, gradient: gradients.mint },
   }[segment];
 
   const header = (
@@ -85,15 +85,15 @@ export default function HomeScreen({ navigation }: Props) {
               {today}
             </AppText>
             <AppText variant="h1" tone="inverse" numberOfLines={1}>
-              {greeting(t, now.getHours())}, {user.firstName}
+              {greeting(now.getHours())}, {user.firstName}
             </AppText>
           </View>
-          <IconButton icon={Bell} onPress={() => navigation.navigate('Notifications')} label={t.notifTitle} badge={unread} />
+          <IconButton icon={Bell} onPress={() => navigation.navigate('Notifications')} label={texts.notifTitle} badge={unread} />
         </View>
         <View style={styles.stats}>
-          <Stat icon={CalendarDays} value={grouped.today.length} label={t.statToday} accent="sky" />
-          <Stat icon={CirclePlay} value={inProgress} label={t.statInProgress} accent="violet" />
-          <Stat icon={CloudUpload} value={queue.length} label={t.statPhotos} accent="amber" />
+          <Stat icon={CalendarDays} value={grouped.today.length} label={texts.statToday} accent="sky" />
+          <Stat icon={CirclePlay} value={inProgress} label={texts.statInProgress} accent="violet" />
+          <Stat icon={CloudUpload} value={queue.length} label={texts.statPhotos} accent="amber" />
         </View>
       </GradientHeader>
       <View style={styles.overlap}>{jobsLoaded ? <NextJobCard job={nextJob} onOpen={openJob} /> : <JobCardSkeleton />}</View>
@@ -102,9 +102,9 @@ export default function HomeScreen({ navigation }: Props) {
           value={segment}
           onChange={setSegment}
           options={[
-            { value: 'today', label: t.segToday, count: grouped.today.length },
-            { value: 'upcoming', label: t.segUpcoming, count: grouped.upcoming.length },
-            { value: 'history', label: t.segHistory },
+            { value: 'today', label: texts.segToday, count: grouped.today.length },
+            { value: 'upcoming', label: texts.segUpcoming, count: grouped.upcoming.length },
+            { value: 'history', label: texts.segHistory },
           ]}
         />
       </View>
@@ -118,7 +118,7 @@ export default function HomeScreen({ navigation }: Props) {
         data={jobsLoaded ? grouped[segment] : []}
         keyExtractor={(j) => j.id}
         ListHeaderComponent={header}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={{ paddingBottom: tabBarSpace }}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
           <View style={styles.item}>

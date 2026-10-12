@@ -2,7 +2,7 @@ import { X } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLanguage } from '../context/LanguageContext';
+import { texts } from '../constants/texts';
 import { useNotifications } from '../context/NotificationsContext';
 import { openJob } from '../navigation/navigationRef';
 import { colors } from '../theme/tokens';
@@ -15,7 +15,6 @@ const VISIBLE_MS = 6000;
 
 export default function NotificationToast() {
   const { toast, dismissToast, markRead } = useNotifications();
-  const { t } = useLanguage();
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
@@ -25,7 +24,7 @@ export default function NotificationToast() {
   }, [toast, dismissToast]);
 
   if (!toast) return null;
-  const v = notificationView(toast, t);
+  const v = notificationView(toast);
 
   return (
     <View style={[styles.host, { top: insets.top + 6 }]}>
@@ -49,7 +48,7 @@ export default function NotificationToast() {
               {v.body}
             </AppText>
           </View>
-          <Pressable onPress={dismissToast} hitSlop={12} accessibilityRole="button" accessibilityLabel={t.close}>
+          <Pressable onPress={dismissToast} hitSlop={12} accessibilityRole="button" accessibilityLabel={texts.close}>
             <X size={18} color={colors.textSoft} />
           </Pressable>
         </Pressable>

@@ -14,7 +14,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.precisecleaningtx.crew",
-      "supportsTablet": true,
+      "supportsTablet": false,
       "infoPlist": {
         "NSCameraUsageDescription": "Precise Cleaning usa la cámara para tomar las fotos Before/After de cada casa.",
         "NSPhotoLibraryUsageDescription": "Precise Cleaning necesita acceso a tus fotos para cargar las fotos Before/After de cada casa.",
@@ -42,7 +42,6 @@
           "photosPermission": "Precise Cleaning necesita acceso a tus fotos para cargar las fotos Before/After de cada casa."
         }
       ],
-      "expo-localization",
       [
         "expo-splash-screen",
         {

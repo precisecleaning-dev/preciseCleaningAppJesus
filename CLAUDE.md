@@ -89,12 +89,29 @@ Function + FCM).
 ## Estilos (equivalente RN de las reglas de la web)
 
 - Nada de estilos inline con valores fijos. Cada componente tiene su `Componente.styles.ts`
-  hermano con `StyleSheet.create`; todo valor sale de `src/theme/tokens.ts`.
+  hermano con `StyleSheet.create`; los de las pantallas viven en `src/styles/`
+  (`src/screens/HomeScreen.tsx` → `src/styles/HomeScreen.styles.ts`). Todo valor sale de
+  `src/theme/tokens.ts`.
 - Inline solo para valores de **tiempo de ejecución** (color de un status que viene de
   Firestore, medidas de `useWindowDimensions`, insets del área segura).
 - Estados finitos → variantes en el StyleSheet, no ternarios con colores sueltos.
 - `pointerEvents` va en el estilo, no como prop (deprecado).
 - No hay `:hover` en móvil: usa `Touchable`.
+
+## Áreas seguras (notch, barra de estado, barra de gestos)
+
+- Un solo `SafeAreaProvider`, en `App.tsx`, con `initialMetrics={initialWindowMetrics}` (sin salto
+  en el primer cuadro). Nunca otro dentro de pantallas o componentes.
+- Nunca el `SafeAreaView` de `react-native`: solo el de `react-native-safe-area-context`.
+- Nunca envolver un Navigator con `SafeAreaView`.
+- Preferir `useSafeAreaInsets()` y aplicar el inset solo donde hace falta:
+  `GradientHeader` (arriba), `StatusScrim` (franja de la barra de estado), `TabBar` (abajo),
+  `NotificationToast` y `OfflineBanner` (arriba), barra de acciones de `JobDetailScreen` (abajo).
+- Listas sobre la barra de pestañas: `useTabBarSpace()` (altura real de la barra + inset inferior).
+- `SafeAreaView` solo en pantallas completas sin encabezado propio (`OnboardingScreen`,
+  `BlockedScreen`, `PhotoViewer`) y siempre con `edges` explícitos.
+- La app es solo vertical (`orientation: portrait`, `supportsTablet: false`): los insets
+  `left`/`right` valen 0. Si algún día se permite girar, hay que aplicarlos en esos mismos lugares.
 
 ## Código
 
@@ -117,7 +134,8 @@ Function + FCM).
 - Fechas: `src/utils/dateFormat.ts` (`formatDate` MM/DD/AAAA, `formatTime` h:mm AM/PM,
   `formatDateTime`). Nunca `toLocaleDateString`/`toLocaleTimeString`.
 - "Hoy" y la hora en pantalla salen de `useNow()` (se actualiza cada minuto y al volver la app).
-- Textos de UI en `src/i18n/strings.ts` (español e inglés), nunca escritos en el JSX.
+- La app es solo en español. Los textos de UI están en `src/constants/texts.ts` (`texts.x`,
+  `fmt()` para variables), nunca escritos en el JSX.
 - Formato: Prettier con `.prettierrc` (comillas simples, 180 columnas).
 
 

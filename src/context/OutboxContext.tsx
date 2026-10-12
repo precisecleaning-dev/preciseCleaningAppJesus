@@ -1,12 +1,12 @@
 import { createContext, useContext, useRef, type ReactNode } from 'react';
 import { Alert } from 'react-native';
+import { texts } from '../constants/texts';
 import { usePersistentList } from '../hooks/usePersistentList';
 import { useWhenOnline } from '../hooks/useWhenOnline';
 import { logActivity } from '../services/activityLog';
 import { applyEmployeeNote, applyMark, MARK_LABEL, markField, markPayload, type MarkKind, type MarkPayload } from '../services/jobsService';
 import type { NoteHistoryEntry, Property } from '../types';
 import { errorCode, makeId } from '../utils/ids';
-import { useLanguage } from './LanguageContext';
 import { checkOnline } from './NetworkContext';
 import { useCurrentUser } from './SessionContext';
 
@@ -28,7 +28,6 @@ const isPermanent = (err: unknown) => /permission-denied|not-found|invalid-argum
 
 export function OutboxProvider({ children }: { children: ReactNode }) {
   const user = useCurrentUser();
-  const { t } = useLanguage();
   const { items, loaded, ref, update } = usePersistentList<Op>('pc_crew_outbox_v1');
   const inFlight = useRef(new Set<string>());
   const notesRunning = useRef(false);
@@ -37,7 +36,7 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
   const reject = (op: Op, err: unknown) => {
     console.error('Cambio rechazado por el servidor:', err);
     drop(op.id);
-    Alert.alert(t.error, `${op.label}\n${errorCode(err)}`);
+    Alert.alert(texts.error, `${op.label}\n${errorCode(err)}`);
   };
 
   const sendMark = (op: MarkOp) => {

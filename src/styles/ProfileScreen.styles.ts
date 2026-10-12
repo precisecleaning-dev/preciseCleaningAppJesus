@@ -1,9 +1,9 @@
 import { StyleSheet } from 'react-native';
-import { colors, radius, shadow, space, TAB_BAR_SPACE, type } from '../theme/tokens';
+import { colors, radius, shadow, space, type } from '../theme/tokens';
 
 export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingBottom: TAB_BAR_SPACE, gap: space.md },
+  content: { gap: space.md },
   flex: { flex: 1, minWidth: 0, gap: 2 },
   identity: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   ring: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center' },

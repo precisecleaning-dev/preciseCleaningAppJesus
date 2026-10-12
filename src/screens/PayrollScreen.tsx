@@ -1,7 +1,6 @@
 import { Banknote, CircleDollarSign, HandCoins, House, Minus, Plus, Wallet } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { SectionList, View } from 'react-native';
-import WeeklyBars, { type WeekBar } from '../components/WeeklyBars';
 import StatusScrim from '../components/StatusScrim';
 import AppText from '../components/ui/AppText';
 import Chip from '../components/ui/Chip';
@@ -9,23 +8,24 @@ import EmptyState from '../components/ui/EmptyState';
 import GradientHeader from '../components/ui/GradientHeader';
 import IconBubble from '../components/ui/IconBubble';
 import { JobCardSkeleton } from '../components/ui/Skeleton';
+import WeeklyBars, { type WeekBar } from '../components/WeeklyBars';
+import { fmt, texts } from '../constants/texts';
 import { useJobs } from '../context/JobsContext';
-import { useLanguage } from '../context/LanguageContext';
 import { useOnline } from '../context/NetworkContext';
 import { usePayroll } from '../context/PayrollContext';
-import { getPropertiesByIds } from '../services/propertiesService';
+import { useTabBarSpace } from '../hooks/useTabBarSpace';
 import { paymentTime, recordTotal } from '../services/payrollService';
-import { fmt, type Strings } from '../i18n/strings';
+import { getPropertiesByIds } from '../services/propertiesService';
+import { styles } from '../styles/PayrollScreen.styles';
 import { colors, gradients } from '../theme/tokens';
 import type { PayrollRecord, Property } from '../types';
 import { DAY_MS, formatDate, money, weekStartOf } from '../utils/dateFormat';
-import { styles } from './PayrollScreen.styles';
 
 const WEEKS = 6;
 
 const sumOf = (list: PayrollRecord[]) => list.reduce((sum, r) => sum + recordTotal(r), 0);
 
-function summarize(records: PayrollRecord[], t: Strings) {
+function summarize(records: PayrollRecord[]) {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
   const thisWeek = weekStartOf(now.getTime());
@@ -54,7 +54,7 @@ function summarize(records: PayrollRecord[], t: Strings) {
     .sort((a, b) => (b[0] || -Infinity) - (a[0] || -Infinity))
     .map(([wk, data]) => ({
       key: String(wk),
-      title: wk ? fmt(t.week, { date: formatDate(wk) }) : t.noDate,
+      title: wk ? fmt(texts.week, { date: formatDate(wk) }) : texts.noDate,
       total: sumOf(data),
       data: data.sort((a, b) => paymentTime(b) - paymentTime(a)),
     }));
@@ -62,10 +62,10 @@ function summarize(records: PayrollRecord[], t: Strings) {
 }
 
 export default function PayrollScreen() {
-  const { t } = useLanguage();
   const { getJob, clientName, requestClients } = useJobs();
   const { records, loaded } = usePayroll();
   const online = useOnline();
+  const tabBarSpace = useTabBarSpace();
   const [otherHouses, setOtherHouses] = useState<{ key: string; list: Property[] } | null>(null);
 
   const missingKey = [...new Set(records.map((r) => r.propertyId).filter((id) => id && !getJob(id)))].sort().join('|');
@@ -88,12 +88,12 @@ export default function PayrollScreen() {
     requestClients(otherClients.split('|'));
   }, [otherClients, requestClients]);
 
-  const { sections, totalPending, paidThisMonth, bars } = summarize(records, t);
+  const { sections, totalPending, paidThisMonth, bars } = summarize(records);
 
   const houseLabel = (r: PayrollRecord): string => {
-    if (!r.propertyId) return r.extraNote || r.discountNote || t.adjustment;
+    if (!r.propertyId) return r.extraNote || r.discountNote || texts.adjustment;
     const h = getJob(r.propertyId) ?? others.find((o) => o.id === r.propertyId);
-    if (!h) return t.house;
+    if (!h) return texts.house;
     return h.address ? `${h.address} · ${clientName(h)}` : clientName(h);
   };
 
@@ -101,19 +101,19 @@ export default function PayrollScreen() {
     <View>
       <GradientHeader overlap={60}>
         <AppText variant="h1" tone="inverse">
-          {t.payrollTitle}
+          {texts.payrollTitle}
         </AppText>
         <View style={styles.balanceRow}>
           <View style={styles.flex}>
             <AppText variant="label" tone="inverseMuted">
-              {t.totalPending}
+              {texts.totalPending}
             </AppText>
             <AppText style={styles.balance}>{money(totalPending)}</AppText>
           </View>
           <View style={styles.monthTile}>
             <CircleDollarSign size={18} color={colors.white} />
             <AppText variant="caption" tone="inverseMuted">
-              {t.totalPaidMonth}
+              {texts.totalPaidMonth}
             </AppText>
             <AppText style={styles.monthValue}>{money(paidThisMonth)}</AppText>
           </View>
@@ -121,10 +121,10 @@ export default function PayrollScreen() {
       </GradientHeader>
       <View style={styles.chartCard}>
         <View style={styles.chartHead}>
-          <AppText variant="title">{t.lastWeeks}</AppText>
+          <AppText variant="title">{texts.lastWeeks}</AppText>
           <View style={styles.legend}>
-            <Chip label={t.paid} accent="mint" />
-            <Chip label={t.pending} accent="amber" />
+            <Chip label={texts.paid} accent="mint" />
+            <Chip label={texts.pending} accent="amber" />
           </View>
         </View>
         <WeeklyBars bars={bars} />
@@ -149,7 +149,7 @@ export default function PayrollScreen() {
       <StatusScrim />
       <SectionList
         style={styles.screen}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={{ paddingBottom: tabBarSpace }}
         sections={sections}
         keyExtractor={(r) => r.id}
         stickySectionHeadersEnabled={false}
@@ -164,8 +164,8 @@ export default function PayrollScreen() {
               { icon: HandCoins, accent: 'violet' },
               { icon: CircleDollarSign, accent: 'sky' },
             ]}
-            title={t.noPayrollTitle}
-            body={t.noPayrollBody}
+            title={texts.noPayrollTitle}
+            body={texts.noPayrollBody}
           />
         }
         renderSectionHeader={({ section }) => (
@@ -187,19 +187,19 @@ export default function PayrollScreen() {
                     {houseLabel(r)}
                   </AppText>
                   <AppText variant="caption" tone="muted">
-                    {paid && (r.paidAt || r.paymentDate) ? fmt(t.paidOn, { date: formatDate(r.paidAt || r.paymentDate) }) : formatDate(r.date)}
+                    {paid && (r.paidAt || r.paymentDate) ? fmt(texts.paidOn, { date: formatDate(r.paidAt || r.paymentDate) }) : formatDate(r.date)}
                   </AppText>
                 </View>
                 <View style={styles.amountCol}>
                   <AppText variant="h2">{money(recordTotal(r))}</AppText>
-                  <Chip label={paid ? t.paid : t.pending} accent={paid ? 'mint' : 'amber'} solid={paid} />
+                  <Chip label={paid ? texts.paid : texts.pending} accent={paid ? 'mint' : 'amber'} solid={paid} />
                 </View>
               </View>
               {(Number(r.extraAmount) > 0 || Number(r.discountAmount) > 0) && (
                 <View style={styles.adjustments}>
-                  {Number(r.extraAmount) > 0 && <Chip icon={Plus} accent="mint" label={`${t.extra} ${money(r.extraAmount)}${r.extraNote ? ` · ${r.extraNote}` : ''}`} />}
+                  {Number(r.extraAmount) > 0 && <Chip icon={Plus} accent="mint" label={`${texts.extra} ${money(r.extraAmount)}${r.extraNote ? ` · ${r.extraNote}` : ''}`} />}
                   {Number(r.discountAmount) > 0 && (
-                    <Chip icon={Minus} accent="coral" label={`${t.discount} ${money(r.discountAmount)}${r.discountNote ? ` · ${r.discountNote}` : ''}`} />
+                    <Chip icon={Minus} accent="coral" label={`${texts.discount} ${money(r.discountAmount)}${r.discountNote ? ` · ${r.discountNote}` : ''}`} />
                   )}
                 </View>
               )}

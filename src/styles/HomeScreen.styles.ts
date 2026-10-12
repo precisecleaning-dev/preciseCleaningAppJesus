@@ -1,9 +1,8 @@
 import { StyleSheet } from 'react-native';
-import { colors, radius, space, TAB_BAR_SPACE, type } from '../theme/tokens';
+import { colors, radius, space, type } from '../theme/tokens';
 
 export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  list: { paddingBottom: TAB_BAR_SPACE },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   avatar: {
     width: 48,

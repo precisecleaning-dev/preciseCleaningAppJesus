@@ -1,5 +1,20 @@
 # code-notes.md — decisiones y pendientes (app móvil)
 
+## 2026-10-12 · Idioma, estilos de pantallas y áreas seguras
+
+- **Sin i18n**: la app es solo en español. Se quitaron `LanguageContext`, el diccionario en inglés,
+  el selector de idioma del perfil y la librería `expo-localization`. Los textos siguen centralizados
+  en `src/constants/texts.ts` para no repetirlos dentro de las pantallas.
+- **Estilos de pantallas** en `src/styles/` (pedido del dueño). Los de componentes siguen junto a
+  cada componente.
+- **Áreas seguras**: auditoría sin fallas graves (un solo `SafeAreaProvider`, ningún `SafeAreaView`
+  de `react-native`, ninguno envolviendo navegadores ni componentes pequeños). Mejoras:
+  `initialMetrics` en el provider, `edges` explícitos en los 3 `SafeAreaView`, espacio inferior de
+  las listas calculado con el inset real (`useTabBarSpace`) en vez de 120 px fijos, e inset inferior
+  en Login y Avisos.
+- `supportsTablet: false`: en iPad corre como app de iPhone, siempre vertical (no hacen falta
+  capturas de iPad para la App Store).
+
 ## 2026-10-09 · Revisión para producción
 
 ### Decisiones
@@ -44,6 +59,8 @@
 ### Pendientes (preguntar antes)
 - `react-native-gesture-handler` ya no se usa (solo servía para deslizar el aviso). Quitarlo de
   `package.json` cuando el dueño lo apruebe.
+- Bug de prioridad alta reportado por Antonio: al cerrar sesión y volver a entrar, la lista de
+  casas se queda cargando hasta reiniciar la app.
 - Push con la app cerrada: requiere Cloud Function + FCM.
 - La consulta de casas del equipo no tiene ventana de fechas; en equipos con mucho historial,
   agregar un filtro por fecha necesita un índice compuesto en Firestore.

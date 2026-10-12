@@ -4,7 +4,7 @@ import { colors, radius, shadow, space, touchMin } from '../theme/tokens';
 export const styles = StyleSheet.create({
   flex: { flex: 1 },
   screen: { flex: 1, backgroundColor: colors.bg },
-  content: { flexGrow: 1, paddingBottom: space.xxl },
+  content: { flexGrow: 1 },
   hero: { alignItems: 'center', gap: space.md, paddingBottom: 90, borderBottomLeftRadius: 48, borderBottomRightRadius: 48, overflow: 'hidden' },
   orb: { position: 'absolute', borderRadius: 999, backgroundColor: colors.orb },
   orbA: { width: 260, height: 260, top: -100, right: -90 },

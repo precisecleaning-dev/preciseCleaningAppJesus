@@ -95,4 +95,4 @@ export const shadow = {
 
 export const touchMin = 48;
 
-export const TAB_BAR_SPACE = 120;
+export const tabBar = { padding: 6, itemHeight: 56, minBottom: 10 };

@@ -1,5 +1,5 @@
-import type { PayrollRecord, Property } from '../types';
 import { recordTotal } from '../services/payrollService';
+import type { PayrollRecord, Property } from '../types';
 
 export type NotifKind = 'assigned' | 'removed' | 'schedule' | 'status' | 'note' | 'payroll' | 'paid';
 

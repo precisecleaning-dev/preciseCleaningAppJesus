@@ -2,20 +2,19 @@ import { Image } from 'expo-image';
 import { Camera, ImagePlus, TriangleAlert } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, View } from 'react-native';
+import { fmt, texts } from '../constants/texts';
 import { useCatalogs } from '../context/CatalogsContext';
-import { useLanguage } from '../context/LanguageContext';
 import { usePhotoQueue } from '../context/PhotoQueueContext';
 import { useSession } from '../context/SessionContext';
-import { fmt } from '../i18n/strings';
 import { pickPhotos } from '../services/photoService';
-import { errorCode } from '../utils/ids';
 import { accents, colors } from '../theme/tokens';
 import type { PhotoKind } from '../types';
+import { errorCode } from '../utils/ids';
 import { styles } from './PhotoSection.styles';
 import PhotoViewer from './PhotoViewer';
 import AppText from './ui/AppText';
-import Touchable from './ui/Touchable';
 import ProgressRing from './ui/ProgressRing';
+import Touchable from './ui/Touchable';
 
 interface Props {
   kind: PhotoKind;
@@ -30,7 +29,6 @@ interface Props {
 type Tile = { type: 'add'; key: string; source: 'camera' | 'library' } | { type: 'photo'; key: string; uri: string; pending: boolean; failed: boolean; progress?: number };
 
 export default function PhotoSection({ kind, urls, propertyId, clientName, address, label, canAdd }: Props) {
-  const { t } = useLanguage();
   const { photoConfig } = useCatalogs();
   const { isElementVisible, isFieldReadOnly } = useSession();
   const { pendingFor, enqueue, current, localUri } = usePhotoQueue();
@@ -65,23 +63,23 @@ export default function PhotoSection({ kind, urls, propertyId, clientName, addre
   const subtitle =
     pending.length > 0
       ? uploadingNow
-        ? fmt(t.uploading, { pct: Math.round((current?.progress || 0) * 100) })
-        : fmt(t.queued, { n: pending.length })
+        ? fmt(texts.uploading, { pct: Math.round((current?.progress || 0) * 100) })
+        : fmt(texts.queued, { n: pending.length })
       : total === 0
-        ? t.noPhotos
+        ? texts.noPhotos
         : `${urls.length} ✓`;
 
   const add = (source: 'camera' | 'library') =>
     pickPhotos(source)
       .then((res) => {
-        if ('denied' in res) return Alert.alert(t.error, source === 'camera' ? t.cameraDenied : t.galleryDenied);
+        if ('denied' in res) return Alert.alert(texts.error, source === 'camera' ? texts.cameraDenied : texts.galleryDenied);
         if (res.photos.length === 0) return;
         setBusy(true);
         return enqueue({ propertyId, clientName, address, label, kind }, res.photos);
       })
       .catch((err) => {
         console.error('Error agregando fotos:', err);
-        Alert.alert(t.error, `${t.uploadError}\n${errorCode(err)}`);
+        Alert.alert(texts.error, `${texts.uploadError}\n${errorCode(err)}`);
       })
       .then(() => setBusy(false));
 
@@ -94,7 +92,7 @@ export default function PhotoSection({ kind, urls, propertyId, clientName, addre
           <AppText variant="caption">{total}</AppText>
         </ProgressRing>
         <View style={styles.titles}>
-          <AppText variant="title">{kind === 'before' ? t.before : t.after}</AppText>
+          <AppText variant="title">{kind === 'before' ? texts.before : texts.after}</AppText>
           <AppText variant="caption" style={pending.length > 0 ? styles.subPending : styles.sub}>
             {subtitle}
           </AppText>
@@ -118,11 +116,11 @@ export default function PhotoSection({ kind, urls, propertyId, clientName, addre
                   onPress={() => add(item.source)}
                   disabled={busy}
                   style={[styles.addTile, isCam ? styles.addCamera : styles.addGallery]}
-                  accessibilityLabel={isCam ? t.takePhoto : t.pickPhoto}
+                  accessibilityLabel={isCam ? texts.takePhoto : texts.pickPhoto}
                 >
                   <Icon size={24} color={isCam ? accents.violet.ink : accents.sky.ink} strokeWidth={2.2} />
                   <AppText variant="caption" style={isCam ? styles.addCamText : styles.addGalText}>
-                    {isCam ? t.takePhoto : t.pickPhoto}
+                    {isCam ? texts.takePhoto : texts.pickPhoto}
                   </AppText>
                 </Touchable>
               );

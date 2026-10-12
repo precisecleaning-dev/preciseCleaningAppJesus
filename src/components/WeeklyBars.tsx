@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 import { money } from '../utils/dateFormat';
-import { BAR_HEIGHT, styles } from './WeeklyBars.styles';
 import AppText from './ui/AppText';
+import { BAR_HEIGHT, styles } from './WeeklyBars.styles';
 
 export interface WeekBar {
   key: string;

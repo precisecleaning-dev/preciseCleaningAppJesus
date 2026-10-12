@@ -1,8 +1,8 @@
 import { Banknote, CalendarClock, CircleDollarSign, House, MapPinOff, MessageSquareText, Tag, type LucideIcon } from 'lucide-react-native';
-import { fmt, type Strings } from '../i18n/strings';
-import type { AppNotification, NotifKind } from './notificationDiff';
+import { fmt, texts } from '../constants/texts';
 import type { AccentName } from '../theme/tokens';
 import { formatDate, money } from './dateFormat';
+import type { AppNotification, NotifKind } from './notificationDiff';
 
 const META: Record<NotifKind, { icon: LucideIcon; accent: AccentName }> = {
   assigned: { icon: House, accent: 'brand' },
@@ -21,10 +21,10 @@ const when = (v?: string) => {
   return [date, rest.join(' ')].filter(Boolean).join(' ');
 };
 
-export function notificationView(n: AppNotification, t: Strings) {
+export function notificationView(n: AppNotification) {
   const meta = META[n.kind];
   const vars = {
-    client: n.client || t.house,
+    client: n.client || texts.house,
     address: n.address || '',
     from: n.kind === 'schedule' ? when(n.from) : n.from || '—',
     to: n.kind === 'schedule' ? when(n.to) : n.to || '—',
@@ -33,16 +33,16 @@ export function notificationView(n: AppNotification, t: Strings) {
   };
   return {
     ...meta,
-    title: t[`n_${n.kind}`],
-    body: fmt(t[`n_${n.kind}_b`], vars),
+    title: texts[`n_${n.kind}`],
+    body: fmt(texts[`n_${n.kind}_b`], vars),
   };
 }
 
-export function timeAgo(at: number, t: Strings, now = Date.now()): string {
+export function timeAgo(at: number, now = Date.now()): string {
   const min = Math.floor((now - at) / 60000);
-  if (min < 1) return t.justNow;
-  if (min < 60) return fmt(t.minAgo, { n: min });
+  if (min < 1) return texts.justNow;
+  if (min < 60) return fmt(texts.minAgo, { n: min });
   const h = Math.floor(min / 60);
-  if (h < 24) return fmt(t.hAgo, { n: h });
+  if (h < 24) return fmt(texts.hAgo, { n: h });
   return formatDate(at);
 }
