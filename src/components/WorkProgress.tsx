@@ -1,10 +1,10 @@
 import { Camera, CircleCheckBig, CirclePlay, House, type LucideIcon } from 'lucide-react-native';
 import { View } from 'react-native';
-import { useLanguage } from '../context/LanguageContext';
+import { texts } from '../constants/texts';
 import { solidBg } from '../theme/accentStyles';
 import { colors, type AccentName } from '../theme/tokens';
-import { styles } from './WorkProgress.styles';
 import AppText from './ui/AppText';
+import { styles } from './WorkProgress.styles';
 
 interface Props {
   started: boolean;
@@ -13,12 +13,11 @@ interface Props {
 }
 
 export default function WorkProgress({ started, photosOk, finished }: Props) {
-  const { t } = useLanguage();
   const steps: { icon: LucideIcon; label: string; done: boolean; accent: AccentName }[] = [
-    { icon: House, label: t.stepAssigned, done: true, accent: 'sky' },
-    { icon: CirclePlay, label: t.stepStarted, done: started || finished, accent: 'violet' },
-    { icon: Camera, label: t.stepPhotos, done: photosOk, accent: 'amber' },
-    { icon: CircleCheckBig, label: t.stepFinished, done: finished, accent: 'mint' },
+    { icon: House, label: texts.stepAssigned, done: true, accent: 'sky' },
+    { icon: CirclePlay, label: texts.stepStarted, done: started || finished, accent: 'violet' },
+    { icon: Camera, label: texts.stepPhotos, done: photosOk, accent: 'amber' },
+    { icon: CircleCheckBig, label: texts.stepFinished, done: finished, accent: 'mint' },
   ];
   const lastDone = steps.reduce((acc, s, i) => (s.done ? i : acc), 0);
 

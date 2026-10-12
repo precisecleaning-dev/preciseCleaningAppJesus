@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Send } from 'lucide-react-native';
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
-import { useLanguage } from '../context/LanguageContext';
+import { texts } from '../constants/texts';
 import { colors, gradients } from '../theme/tokens';
 import type { NoteHistoryEntry } from '../types';
 import { formatDateTime } from '../utils/dateFormat';
@@ -22,7 +22,6 @@ interface Props {
 }
 
 export default function NoteThread({ title, field, legacyText, history, pending = [], myEmail, canWrite, onSend }: Props) {
-  const { t } = useLanguage();
   const [draft, setDraft] = useState('');
 
   const entries = history.filter((e) => e.field === field && String(e.text || '').trim() !== '');
@@ -64,7 +63,7 @@ export default function NoteThread({ title, field, legacyText, history, pending 
           <AppText variant="body">{m.text}</AppText>
           {(m.author || m.at || m.pending) && (
             <AppText variant="caption" tone="muted">
-              {[m.author, formatDateTime(m.at), m.pending ? t.pendingSync : ''].filter(Boolean).join(' · ')}
+              {[m.author, formatDateTime(m.at), m.pending ? texts.pendingSync : ''].filter(Boolean).join(' · ')}
             </AppText>
           )}
         </View>
@@ -75,12 +74,12 @@ export default function NoteThread({ title, field, legacyText, history, pending 
             style={styles.input}
             value={draft}
             onChangeText={setDraft}
-            placeholder={t.writeNote}
+            placeholder={texts.writeNote}
             placeholderTextColor={colors.textSoft}
             multiline
-            accessibilityLabel={t.writeNote}
+            accessibilityLabel={texts.writeNote}
           />
-          <Touchable onPress={send} disabled={!draft.trim()} accessibilityLabel={t.send} haptic="medium" style={!draft.trim() && styles.sendDisabled}>
+          <Touchable onPress={send} disabled={!draft.trim()} accessibilityLabel={texts.send} haptic="medium" style={!draft.trim() && styles.sendDisabled}>
             <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.sendBtn}>
               <Send size={20} color={colors.white} />
             </LinearGradient>

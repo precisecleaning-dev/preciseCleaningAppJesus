@@ -7,9 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AppText from '../components/ui/AppText';
 import Illustration, { type Orbits } from '../components/ui/Illustration';
 import Touchable from '../components/ui/Touchable';
-import { useLanguage } from '../context/LanguageContext';
+import { texts } from '../constants/texts';
+import { styles } from '../styles/OnboardingScreen.styles';
 import { colors, gradients } from '../theme/tokens';
-import { styles } from './OnboardingScreen.styles';
 
 interface Slide {
   icon: LucideIcon;
@@ -56,7 +56,6 @@ const SLIDES: Slide[] = [
 ];
 
 export default function OnboardingScreen({ onFinish }: { onFinish: () => void }) {
-  const { t } = useLanguage();
   const { width } = useWindowDimensions();
   const [page, setPage] = useState(0);
   const scroller = useRef<ScrollView>(null);
@@ -69,16 +68,16 @@ export default function OnboardingScreen({ onFinish }: { onFinish: () => void })
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
       <StatusBar style="dark" />
       <View style={styles.top}>
         <AppText variant="label" tone="brand">
-          {t.appName}
+          {texts.appName}
         </AppText>
         {!isLast && (
-          <Touchable onPress={onFinish} accessibilityLabel={t.skip} style={styles.skip}>
+          <Touchable onPress={onFinish} accessibilityLabel={texts.skip} style={styles.skip}>
             <AppText variant="bodyStrong" tone="muted">
-              {t.skip}
+              {texts.skip}
             </AppText>
           </Touchable>
         )}
@@ -95,10 +94,10 @@ export default function OnboardingScreen({ onFinish }: { onFinish: () => void })
             <Illustration icon={slide.icon} gradient={slide.gradient} orbits={slide.orbits} size={Math.min(280, width * 0.72)} />
             <View style={styles.copy}>
               <AppText variant="display" center>
-                {t[slide.title]}
+                {texts[slide.title]}
               </AppText>
               <AppText variant="body" tone="muted" center>
-                {t[slide.body]}
+                {texts[slide.body]}
               </AppText>
             </View>
           </View>
@@ -110,11 +109,11 @@ export default function OnboardingScreen({ onFinish }: { onFinish: () => void })
             <View key={slide.title} style={[styles.dot, i === page && styles.dotActive]} />
           ))}
         </View>
-        <Touchable onPress={goNext} accessibilityLabel={isLast ? t.start : t.next} haptic="medium">
+        <Touchable onPress={goNext} accessibilityLabel={isLast ? texts.start : texts.next} haptic="medium">
           <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.next, isLast && styles.nextWide]}>
             {isLast && (
               <AppText variant="title" tone="inverse">
-                {t.start}
+                {texts.start}
               </AppText>
             )}
             <ArrowRight size={24} color={colors.white} strokeWidth={2.4} />

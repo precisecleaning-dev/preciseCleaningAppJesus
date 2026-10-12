@@ -1,7 +1,7 @@
 import { Camera, ChevronRight, Clock, MapPin, Sparkles } from 'lucide-react-native';
 import { View } from 'react-native';
+import { texts } from '../constants/texts';
 import { useJobs } from '../context/JobsContext';
-import { useLanguage } from '../context/LanguageContext';
 import { useSession } from '../context/SessionContext';
 import { accents, colors } from '../theme/tokens';
 import type { Property } from '../types';
@@ -21,10 +21,9 @@ interface Props {
 }
 
 export default function JobCard({ job, pending, onPress }: Props) {
-  const { t } = useLanguage();
   const { clientName, serviceName, statusOf } = useJobs();
   const { isElementVisible } = useSession();
-  const v = jobVisual(job, t);
+  const v = jobVisual(job);
   const status = statusOf(job);
   const stripe = safeColor(status?.color, accents[v.accent].solid);
   const photos = (job.beforePhotos?.length || 0) + (job.afterPhotos?.length || 0);
@@ -55,7 +54,7 @@ export default function JobCard({ job, pending, onPress }: Props) {
           <Chip
             icon={Clock}
             accent="sky"
-            label={[formatDate(job.scheduleDate || job.receiveDate) || t.noDate, isElementVisible('timeIn') ? time : ''].filter(Boolean).join(' · ')}
+            label={[formatDate(job.scheduleDate || job.receiveDate) || texts.noDate, isElementVisible('timeIn') ? time : ''].filter(Boolean).join(' · ')}
           />
           {isElementVisible('serviceId') && <Chip icon={Sparkles} accent="teal" label={serviceName(job)} />}
         </View>

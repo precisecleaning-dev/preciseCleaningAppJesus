@@ -1,5 +1,5 @@
-import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
 import { useRef, useState } from 'react';
@@ -8,14 +8,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppText from '../components/ui/AppText';
 import Button from '../components/ui/Button';
 import TextField from '../components/ui/TextField';
-import { useLanguage } from '../context/LanguageContext';
+import { texts } from '../constants/texts';
 import { resetPassword, signIn as authSignIn } from '../services/sessionService';
-import { colors, gradients } from '../theme/tokens';
+import { styles } from '../styles/LoginScreen.styles';
+import { colors, gradients, space } from '../theme/tokens';
 import { errorCode } from '../utils/ids';
-import { styles } from './LoginScreen.styles';
 
 export default function LoginScreen() {
-  const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,21 +35,21 @@ export default function LoginScreen() {
       .then(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined))
       .catch((err) => {
         console.error('Login error:', err);
-        fail(t.loginError);
+        fail(texts.loginError);
       })
       .then(() => setLoading(false));
   };
 
   const reset = () => {
-    if (!email.trim()) return fail(t.enterEmailFirst);
+    if (!email.trim()) return fail(texts.enterEmailFirst);
     resetPassword(email)
-      .then(() => Alert.alert(t.appName, t.resetSent))
-      .catch((err) => Alert.alert(t.error, errorCode(err)));
+      .then(() => Alert.alert(texts.appName, texts.resetSent))
+      .catch((err) => Alert.alert(texts.error, errorCode(err)));
   };
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" bounces={false}>
+      <ScrollView style={styles.screen} contentContainerStyle={[styles.content, { paddingBottom: space.xxl + insets.bottom }]} keyboardShouldPersistTaps="handled" bounces={false}>
         <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.hero, { paddingTop: insets.top + 36 }]}>
           <View style={[styles.orb, styles.orbA]} />
           <View style={[styles.orb, styles.orbB]} />
@@ -59,24 +58,24 @@ export default function LoginScreen() {
           </View>
           <View>
             <AppText variant="display" tone="inverse" center>
-              {t.appName}
+              {texts.appName}
             </AppText>
             <AppText variant="label" tone="inverseMuted" center>
-              {t.appTagline}
+              {texts.appTagline}
             </AppText>
           </View>
         </LinearGradient>
 
         <View style={styles.card}>
           <View style={styles.cardHead}>
-            <AppText variant="h1">{t.loginTitle}</AppText>
+            <AppText variant="h1">{texts.loginTitle}</AppText>
             <AppText variant="small" tone="muted">
-              {t.loginSubtitle}
+              {texts.loginSubtitle}
             </AppText>
           </View>
           <TextField
             icon={Mail}
-            placeholder={t.email}
+            placeholder={texts.email}
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
@@ -86,12 +85,12 @@ export default function LoginScreen() {
             onChangeText={setEmail}
             onSubmitEditing={() => passRef.current?.focus()}
             invalid={!!error}
-            accessibilityLabel={t.email}
+            accessibilityLabel={texts.email}
           />
           <TextField
             ref={passRef}
             icon={Lock}
-            placeholder={t.password}
+            placeholder={texts.password}
             secureTextEntry={!show}
             autoComplete="password"
             textContentType="password"
@@ -100,9 +99,9 @@ export default function LoginScreen() {
             onChangeText={setPassword}
             onSubmitEditing={signIn}
             invalid={!!error}
-            accessibilityLabel={t.password}
+            accessibilityLabel={texts.password}
             right={
-              <Pressable onPress={() => setShow((v) => !v)} hitSlop={10} accessibilityRole="button" accessibilityLabel={show ? t.hidePassword : t.showPassword}>
+              <Pressable onPress={() => setShow((v) => !v)} hitSlop={10} accessibilityRole="button" accessibilityLabel={show ? texts.hidePassword : texts.showPassword}>
                 {show ? <EyeOff size={20} color={colors.textMuted} /> : <Eye size={20} color={colors.textMuted} />}
               </Pressable>
             }
@@ -114,10 +113,10 @@ export default function LoginScreen() {
               </AppText>
             </View>
           )}
-          <Button label={t.signIn} onPress={signIn} loading={loading} disabled={!email || !password} size="lg" />
+          <Button label={texts.signIn} onPress={signIn} loading={loading} disabled={!email || !password} size="lg" />
           <Pressable onPress={reset} accessibilityRole="link" style={styles.link}>
             <AppText variant="bodyStrong" tone="brand">
-              {t.forgotPassword}
+              {texts.forgotPassword}
             </AppText>
           </Pressable>
         </View>

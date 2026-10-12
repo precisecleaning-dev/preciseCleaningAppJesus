@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Camera, CircleCheckBig, CloudCheck, CloudUpload, House, Languages, LogOut, RefreshCw, type LucideIcon } from 'lucide-react-native';
+import { Camera, CircleCheckBig, CloudCheck, CloudUpload, House, LogOut, RefreshCw, type LucideIcon } from 'lucide-react-native';
 import { ScrollView, View } from 'react-native';
 import StatusScrim from '../components/StatusScrim';
 import AppText from '../components/ui/AppText';
@@ -8,19 +8,18 @@ import Button from '../components/ui/Button';
 import Chip from '../components/ui/Chip';
 import GradientHeader from '../components/ui/GradientHeader';
 import IconBubble from '../components/ui/IconBubble';
-import SegmentedTabs from '../components/ui/SegmentedTabs';
+import { fmt, texts } from '../constants/texts';
 import { useCatalogs } from '../context/CatalogsContext';
 import { useJobs } from '../context/JobsContext';
-import { useLanguage } from '../context/LanguageContext';
 import { useOutbox } from '../context/OutboxContext';
 import { usePhotoQueue } from '../context/PhotoQueueContext';
 import { useCurrentUser, useSession } from '../context/SessionContext';
-import { fmt, type Lang } from '../i18n/strings';
+import { useTabBarSpace } from '../hooks/useTabBarSpace';
+import { styles } from '../styles/ProfileScreen.styles';
 import { colors, gradients, type AccentName } from '../theme/tokens';
-import { workStateOf } from '../utils/jobState';
 import { initialsOf } from '../utils/ids';
+import { workStateOf } from '../utils/jobState';
 import { findRelation } from '../utils/relations';
-import { styles } from './ProfileScreen.styles';
 
 function Stat({ icon, accent, value, label }: { icon: LucideIcon; accent: AccentName; value: number; label: string }) {
   return (
@@ -35,8 +34,8 @@ function Stat({ icon, accent, value, label }: { icon: LucideIcon; accent: Accent
 }
 
 export default function ProfileScreen() {
-  const { t, lang, setLang } = useLanguage();
   const user = useCurrentUser();
+  const tabBarSpace = useTabBarSpace();
   const { role, signOut } = useSession();
   const { teams } = useCatalogs();
   const { jobs } = useJobs();
@@ -52,10 +51,10 @@ export default function ProfileScreen() {
   return (
     <View style={styles.screen}>
       <StatusScrim />
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.screen} contentContainerStyle={[styles.content, { paddingBottom: tabBarSpace }]} showsVerticalScrollIndicator={false}>
         <GradientHeader overlap={56}>
           <AppText variant="h1" tone="inverse">
-            {t.profileTitle}
+            {texts.profileTitle}
           </AppText>
           <View style={styles.identity}>
             <LinearGradient colors={gradients.violet} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ring}>
@@ -81,60 +80,45 @@ export default function ProfileScreen() {
         </GradientHeader>
 
         <View style={[styles.card, styles.statsCard]}>
-          <Stat icon={House} accent="sky" value={jobs.length} label={t.statJobs} />
+          <Stat icon={House} accent="sky" value={jobs.length} label={texts.statJobs} />
           <View style={styles.vr} />
-          <Stat icon={CircleCheckBig} accent="mint" value={done} label={t.statDone} />
+          <Stat icon={CircleCheckBig} accent="mint" value={done} label={texts.statDone} />
           <View style={styles.vr} />
-          <Stat icon={Camera} accent="amber" value={photos} label={t.statPhotosUp} />
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.cardHead}>
-            <IconBubble icon={Languages} accent="teal" size="sm" />
-            <AppText variant="title">{t.language}</AppText>
-          </View>
-          <SegmentedTabs<Lang>
-            value={lang}
-            onChange={setLang}
-            options={[
-              { value: 'es', label: 'Español' },
-              { value: 'en', label: 'English' },
-            ]}
-          />
+          <Stat icon={Camera} accent="amber" value={photos} label={texts.statPhotosUp} />
         </View>
 
         <View style={styles.card}>
           <View style={styles.cardHead}>
             <IconBubble icon={synced ? CloudCheck : CloudUpload} accent={synced ? 'mint' : 'amber'} size="sm" />
-            <AppText variant="title">{t.sync}</AppText>
+            <AppText variant="title">{texts.sync}</AppText>
           </View>
           {synced ? (
             <AppText variant="body" tone="success">
-              {t.allSynced}
+              {texts.allSynced}
             </AppText>
           ) : (
             <View style={styles.syncList}>
               {queue.length > 0 && (
                 <AppText variant="body">
-                  {fmt(t.pendingUploads, { n: queue.length })}
-                  {current ? ` · ${fmt(t.uploading, { pct: Math.round(current.progress * 100) })}` : ''}
+                  {fmt(texts.pendingUploads, { n: queue.length })}
+                  {current ? ` · ${fmt(texts.uploading, { pct: Math.round(current.progress * 100) })}` : ''}
                 </AppText>
               )}
-              {pendingCount > 0 && <AppText variant="body">{fmt(t.pendingChanges, { n: pendingCount })}</AppText>}
+              {pendingCount > 0 && <AppText variant="body">{fmt(texts.pendingChanges, { n: pendingCount })}</AppText>}
               {failed.slice(0, 3).map((q) => (
                 <AppText key={q.id} variant="caption" tone="danger" numberOfLines={1}>
                   {q.label} · {q.lastError}
                 </AppText>
               ))}
-              {failed.length > 0 && <Button variant="soft" size="sm" label={t.retryNow} onPress={retryAll} icon={<RefreshCw size={16} color={colors.primaryDark} />} />}
+              {failed.length > 0 && <Button variant="soft" size="sm" label={texts.retryNow} onPress={retryAll} icon={<RefreshCw size={16} color={colors.primaryDark} />} />}
             </View>
           )}
         </View>
 
         <View style={styles.signOut}>
-          <Button variant="outline" label={t.signOut} onPress={signOut} icon={<LogOut size={18} color={colors.primary} />} />
+          <Button variant="outline" label={texts.signOut} onPress={signOut} icon={<LogOut size={18} color={colors.primary} />} />
           <AppText variant="caption" tone="soft" center>
-            {t.appName} · {fmt(t.version, { v: Constants.expoConfig?.version || '' })}
+            {texts.appName} · {fmt(texts.version, { v: Constants.expoConfig?.version || '' })}
           </AppText>
         </View>
       </ScrollView>

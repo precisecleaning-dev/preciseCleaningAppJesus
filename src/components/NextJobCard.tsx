@@ -1,9 +1,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowRight, CalendarCheck, PartyPopper, Sparkles, Star } from 'lucide-react-native';
 import { View } from 'react-native';
+import { fmt, texts } from '../constants/texts';
 import { useJobs } from '../context/JobsContext';
-import { useLanguage } from '../context/LanguageContext';
-import { fmt } from '../i18n/strings';
 import { colors, gradients } from '../theme/tokens';
 import type { Property } from '../types';
 import { formatTime } from '../utils/dateFormat';
@@ -11,12 +10,11 @@ import { workStateOf } from '../utils/jobState';
 import { jobVisual } from '../utils/jobVisual';
 import { styles } from './NextJobCard.styles';
 import AppText from './ui/AppText';
-import Illustration from './ui/Illustration';
 import IconBubble from './ui/IconBubble';
+import Illustration from './ui/Illustration';
 import Touchable from './ui/Touchable';
 
 export default function NextJobCard({ job, onOpen }: { job: Property | null; onOpen: (j: Property) => void }) {
-  const { t } = useLanguage();
   const { clientName } = useJobs();
 
   if (!job) {
@@ -33,24 +31,24 @@ export default function NextJobCard({ job, onOpen }: { job: Property | null; onO
           size={120}
         />
         <View style={styles.doneText}>
-          <AppText variant="h2">{t.allDoneTitle}</AppText>
+          <AppText variant="h2">{texts.allDoneTitle}</AppText>
           <AppText variant="small" tone="muted">
-            {t.allDoneBody}
+            {texts.allDoneBody}
           </AppText>
         </View>
       </View>
     );
   }
 
-  const v = jobVisual(job, t);
+  const v = jobVisual(job);
   const running = workStateOf(job) === 'inProgress';
   const time = [job.timeIn, job.timeOut].filter(Boolean).join(' – ');
 
   return (
-    <Touchable onPress={() => onOpen(job)} style={styles.card} accessibilityLabel={`${t.nextUp}: ${clientName(job)}`}>
+    <Touchable onPress={() => onOpen(job)} style={styles.card} accessibilityLabel={`${texts.nextUp}: ${clientName(job)}`}>
       <View style={styles.head}>
         <AppText variant="label" tone="brand">
-          {t.nextUp}
+          {texts.nextUp}
         </AppText>
         {running && <View style={styles.pulseDot} />}
       </View>
@@ -67,11 +65,11 @@ export default function NextJobCard({ job, onOpen }: { job: Property | null; onO
       </View>
       <View style={styles.foot}>
         <AppText variant="bodyStrong" style={running ? styles.running : styles.when}>
-          {running ? fmt(t.inProgressSince, { time: formatTime(job.employeeStartedAt) }) : fmt(t.startsAt, { time: time || t.noDate })}
+          {running ? fmt(texts.inProgressSince, { time: formatTime(job.employeeStartedAt) }) : fmt(texts.startsAt, { time: time || texts.noDate })}
         </AppText>
         <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
           <AppText variant="caption" tone="inverse">
-            {t.openJob}
+            {texts.openJob}
           </AppText>
           <ArrowRight size={16} color={colors.white} />
         </LinearGradient>

@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { LucideIcon } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, gradients } from '../../theme/tokens';
+import { colors, gradients, tabBar } from '../../theme/tokens';
 import AppText from './AppText';
 import { styles } from './TabBar.styles';
 
@@ -16,7 +16,7 @@ interface Props extends BottomTabBarProps {
 export default function TabBar({ state, navigation, icons, labels }: Props) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.outer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+    <View style={[styles.outer, { paddingBottom: Math.max(insets.bottom, tabBar.minBottom) }]}>
       <View style={styles.bar} accessibilityRole="tablist">
         {state.routes.map((route, i) => {
           const focused = state.index === i;

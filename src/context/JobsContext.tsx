@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { texts } from '../constants/texts';
 import { useWhenOnline } from '../hooks/useWhenOnline';
 import { getCustomersByKeys } from '../services/customersService';
 import { subscribeAssigned, subscribeTeam } from '../services/propertiesService';
 import type { Customer, Property, Status } from '../types';
 import { displayClientName, findRelation } from '../utils/relations';
 import { useCatalogs } from './CatalogsContext';
-import { useLanguage } from './LanguageContext';
 import { useOnline } from './NetworkContext';
 import { useSession } from './SessionContext';
 
@@ -27,7 +27,6 @@ const JobsContext = createContext<JobsValue | null>(null);
 export function JobsProvider({ children }: { children: ReactNode }) {
   const { user, isSuperAdmin, housesPermission, isElementVisible, configLoaded } = useSession();
   const { statuses, teams, products, services, loaded: catalogsLoaded } = useCatalogs();
-  const { t } = useLanguage();
   const online = useOnline();
   const [assigned, setAssigned] = useState<Keyed<Property>>(null);
   const [byTeam, setByTeam] = useState<Keyed<Property>>(null);
@@ -78,7 +77,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   useWhenOnline(() => setRetry((n) => n + 1), customers?.key === '');
 
   const customerList = customers?.list ?? [];
-  const clientName = (p: Property) => displayClientName(customerList, p.client, { unknown: t.unknownClient, deleted: t.deletedClient });
+  const clientName = (p: Property) => displayClientName(customerList, p.client, { unknown: texts.unknownClient, deleted: texts.deletedClient });
   const value: JobsValue = {
     jobs,
     jobsLoaded: assignedLoaded,

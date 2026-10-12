@@ -9,9 +9,9 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
 import AnimatedSplash from './src/components/AnimatedSplash';
-import { LanguageProvider, useLanguage } from './src/context/LanguageContext';
+import { texts } from './src/constants/texts';
 import { NetworkProvider } from './src/context/NetworkContext';
 import { SessionProvider, useSession } from './src/context/SessionContext';
 import RootNavigator, { useOnboarded } from './src/navigation/RootNavigator';
@@ -20,7 +20,6 @@ SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 function Shell({ fontsReady }: { fontsReady: boolean }) {
   const { state } = useSession();
-  const { t } = useLanguage();
   const [onboarded, finishOnboarding] = useOnboarded();
   const [splashDone, setSplashDone] = useState(false);
   const ready = fontsReady && onboarded !== null && state !== 'checking' && state !== 'loadingProfile';
@@ -28,7 +27,7 @@ function Shell({ fontsReady }: { fontsReady: boolean }) {
   return (
     <>
       {fontsReady && <RootNavigator onboarded={onboarded} finishOnboarding={finishOnboarding} />}
-      {!splashDone && <AnimatedSplash ready={ready} fontsReady={fontsReady} label={{ name: t.appName, tagline: t.appTagline }} onDone={() => setSplashDone(true)} />}
+      {!splashDone && <AnimatedSplash ready={ready} fontsReady={fontsReady} label={{ name: texts.appName, tagline: texts.appTagline }} onDone={() => setSplashDone(true)} />}
       <StatusBar style="light" />
     </>
   );
@@ -44,14 +43,12 @@ export default function App() {
   });
 
   return (
-    <SafeAreaProvider>
-      <LanguageProvider>
-        <NetworkProvider>
-          <SessionProvider>
-            <Shell fontsReady={fontsLoaded || !!fontError} />
-          </SessionProvider>
-        </NetworkProvider>
-      </LanguageProvider>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <NetworkProvider>
+        <SessionProvider>
+          <Shell fontsReady={fontsLoaded || !!fontError} />
+        </SessionProvider>
+      </NetworkProvider>
     </SafeAreaProvider>
   );
 }
