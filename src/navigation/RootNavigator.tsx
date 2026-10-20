@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { DefaultTheme, NavigationContainer, type Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { House, User, Wallet } from 'lucide-react-native';
+import { House, ListChecks, User, Wallet } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import LoadingScreen from '../components/LoadingScreen';
 import NotificationToast from '../components/NotificationToast';
@@ -23,6 +23,7 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import PayrollScreen from '../screens/PayrollScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import TasksScreen from '../screens/TasksScreen';
 import { colors } from '../theme/tokens';
 import { navigationRef } from './navigationRef';
 import type { RootStackParams, TabParams } from './types';
@@ -37,13 +38,14 @@ const theme: Theme = {
     colors: { ...DefaultTheme.colors, primary: colors.primary, background: colors.bg, card: colors.surface, text: colors.text, border: colors.border },
 };
 
-const TAB_ICONS = { Home: House, Payroll: Wallet, Profile: User };
+const TAB_ICONS = { Home: House, Tasks: ListChecks, Payroll: Wallet, Profile: User };
 
 function MainTabs() {
-    const labels = { Home: t.tabHome, Payroll: t.tabPayroll, Profile: t.tabProfile };
+    const labels = { Home: t.tabHome, Tasks: t.tabTasks, Payroll: t.tabPayroll, Profile: t.tabProfile };
     return (
         <Tabs.Navigator screenOptions={{ headerShown: false }} tabBar={(props) => <TabBar {...props} icons={TAB_ICONS} labels={labels} />}>
             <Tabs.Screen name="Home" component={HomeScreen} />
+            <Tabs.Screen name="Tasks" component={TasksScreen} />
             <Tabs.Screen name="Payroll" component={PayrollScreen} />
             <Tabs.Screen name="Profile" component={ProfileScreen} />
         </Tabs.Navigator>

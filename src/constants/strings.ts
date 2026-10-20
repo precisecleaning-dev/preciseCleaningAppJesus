@@ -31,6 +31,7 @@ export const t = {
     signingOut: 'Signing out…',
 
     tabHome: 'Home',
+    tabTasks: 'Tasks',
     tabPayroll: 'Payroll',
     tabProfile: 'Profile',
 
@@ -112,6 +113,7 @@ export const t = {
     send: 'Send',
     pendingSync: 'waiting to send',
 
+    tasksTitle: 'Tasks & Projects',
     payrollTitle: 'My Payroll',
     pending: 'Pending',
     paid: 'Paid',
