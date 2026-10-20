@@ -8,15 +8,15 @@ import AppText from './ui/AppText';
 import { t } from '../constants/strings';
 
 export default function OfflineBanner() {
-  const isOnline = useOnline();
-  const insets = useSafeAreaInsets();
-  if (isOnline) return null;
-  return (
-    <View style={[styles.banner, { top: insets.top + 4 }]} accessibilityRole="alert">
-      <CloudOff size={15} color={accents.amber.ink} />
-      <AppText variant="caption" tone="warning" numberOfLines={1} style={styles.text}>
-        {t.offline}
-      </AppText>
-    </View>
-  );
+    const isOnline = useOnline();
+    const insets = useSafeAreaInsets();
+    if (isOnline) return null;
+    return (
+        <View style={[styles.banner, { top: insets.top + 4 }]} accessibilityRole="alert">
+            <CloudOff size={15} color={accents.amber.ink} />
+            <AppText variant="caption" tone="warning" numberOfLines={1} style={styles.text}>
+                {t.offline}
+            </AppText>
+        </View>
+    );
 }

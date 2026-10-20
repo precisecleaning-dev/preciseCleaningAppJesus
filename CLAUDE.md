@@ -42,47 +42,52 @@ mala práctica, señálala y propón la corrección; no la repliques.
 ## Código
 
 ### TypeScript y nombres
+
 - TypeScript estricto (`strict: true`) con sintaxis moderna: `async/await`, desestructuración,
   optional chaining (`?.`), nullish coalescing (`??`), módulos ES.
 - Nombres:
-  - `camelCase` para variables, funciones, hooks y props.
-  - `PascalCase` para componentes, tipos e interfaces.
-  - `UPPER_SNAKE_CASE` para constantes de módulo (`MAX_ATTEMPTS`).
+    - `camelCase` para variables, funciones, hooks y props.
+    - `PascalCase` para componentes, tipos e interfaces.
+    - `UPPER_SNAKE_CASE` para constantes de módulo (`MAX_ATTEMPTS`).
 - **Nombres claros, sin abreviaciones (clean code).** El nombre dice qué es o qué hace, sin
   tener que leer el código alrededor:
 
-  | En vez de… | Usa… |
-  |---|---|
-  | `p`, `j`, `q`, `r` | `property`, `job`, `queuedPhoto`, `record` |
-  | `v`, `st`, `agg`, `idx` | `visual`, `status`, `photoCount`, `photoIndex` |
-  | `cfg`, `ctx`, `snap`, `err` | `photoConfig`, `context`, `snapshot`, `error` |
-  | `data`, `info`, `item`, `tmp` | el nombre del dominio: `jobs`, `payrollRecords`, `pendingNote` |
+    | En vez de…                    | Usa…                                                           |
+    | ----------------------------- | -------------------------------------------------------------- |
+    | `p`, `j`, `q`, `r`            | `property`, `job`, `queuedPhoto`, `record`                     |
+    | `v`, `st`, `agg`, `idx`       | `visual`, `status`, `photoCount`, `photoIndex`                 |
+    | `cfg`, `ctx`, `snap`, `err`   | `photoConfig`, `context`, `snapshot`, `error`                  |
+    | `data`, `info`, `item`, `tmp` | el nombre del dominio: `jobs`, `payrollRecords`, `pendingNote` |
+    - Funciones con verbo: `formatDate`, `loadCatalogs`, `canUndoMark`.
+    - Booleanos como pregunta: `isOverdue`, `hasPhotos`, `canEdit`, `shouldRetry`.
+    - Handlers con `handle` + evento: `handleStartPress`; sus props con `on`: `onStart`.
+    - Excepciones aceptadas: `i` en un `for` corto, `_` para un parámetro que no se usa, y `t` /
+      `fmt` de `src/constants/strings.ts`, que se usan en todas las vistas.
+    - Igual que con las funciones flecha: renombra en los archivos que ya estés modificando.
 
-  - Funciones con verbo: `formatDate`, `loadCatalogs`, `canUndoMark`.
-  - Booleanos como pregunta: `isOverdue`, `hasPhotos`, `canEdit`, `shouldRetry`.
-  - Handlers con `handle` + evento: `handleStartPress`; sus props con `on`: `onStart`.
-  - Excepciones aceptadas: `i` en un `for` corto, `_` para un parámetro que no se usa, y `t` /
-    `fmt` de `src/constants/strings.ts`, que se usan en todas las vistas.
-  - Igual que con las funciones flecha: renombra en los archivos que ya estés modificando.
 - Archivos: componentes y pantallas `PascalCase.tsx`; hooks `useAlgo.ts`; servicios y utilidades
   `camelCase.ts`.
 - Sin `any`. Evita `as` para "convencer" al compilador; si un dato externo puede faltar, tipéalo
   como opcional.
 - **Funciones flecha** en lugar de `function`: componentes, hooks, servicios y utilidades.
-  ```tsx
-  const JobCard = ({ job, onOpen }: Props) => { … };
-  export default JobCard;
 
-  export const useNow = () => { … };
-  export const formatDate = (value: string) => …;
-  ```
-  El código heredado usa `function`. Conviértelo solo en los archivos que ya estés modificando;
-  no hagas cambios masivos de estilo en un PR aparte de su tarea.
+    ```tsx
+    const JobCard = ({ job, onOpen }: Props) => { … };
+    export default JobCard;
+
+    export const useNow = () => { … };
+    export const formatDate = (value: string) => …;
+    ```
+
+    El código heredado usa `function`. Conviértelo solo en los archivos que ya estés modificando;
+    no hagas cambios masivos de estilo en un PR aparte de su tarea.
+
 - Tipos de props con `interface Props`, nunca en línea en la firma.
 - Tipos del dominio en `src/types/index.ts`. Uniones de literales para estados finitos
   (`'pending' | 'paid'`), no strings libres.
 
 ### Componentes
+
 - Solo componentes de función escritos como flecha (ver arriba).
   Sin clases, sin HOC, sin `React.FC` ni `forwardRef` (React 19: `ref` es una prop).
 - **Reutiliza antes de crear.** Revisa `src/components/ui/` y `src/components/` antes de escribir
@@ -93,20 +98,22 @@ mala práctica, señálala y propón la corrección; no la repliques.
 - Las vistas se escriben con las primitivas del sistema de diseño, no con piezas básicas de
   React Native:
 
-  | En vez de… | Usa… |
-  |---|---|
-  | `<Text>` | `<AppText variant tone>` |
-  | `<Pressable>` / `TouchableOpacity` | `<Touchable>` |
-  | botón armado a mano | `<Button>` |
-  | `<TextInput>` | `<TextField>` |
-  | lista vacía armada a mano | `<EmptyState>` |
-  | spinner como placeholder | `<Skeleton>` |
+    | En vez de…                         | Usa…                     |
+    | ---------------------------------- | ------------------------ |
+    | `<Text>`                           | `<AppText variant tone>` |
+    | `<Pressable>` / `TouchableOpacity` | `<Touchable>`            |
+    | botón armado a mano                | `<Button>`               |
+    | `<TextInput>`                      | `<TextField>`            |
+    | lista vacía armada a mano          | `<EmptyState>`           |
+    | spinner como placeholder           | `<Skeleton>`             |
 
-  Si una primitiva no cubre un caso, extiéndela; no la saltes.
+    Si una primitiva no cubre un caso, extiéndela; no la saltes.
+
 - Componentes pequeños y con una sola responsabilidad. Si un componente mezcla datos, lógica y
   presentación, mueve la lógica a un hook.
 
 ### Hooks
+
 - La lógica con estado o efectos va en hooks propios (`src/hooks/useAlgo.ts`), no dentro de
   pantallas ni de archivos de navegación.
 - **React Compiler activo**: no agregues `useMemo`, `useCallback` ni `memo`. Evita `try/finally`
@@ -115,6 +122,7 @@ mala práctica, señálala y propón la corrección; no la repliques.
 - Cada context expone un hook `useAlgo()` que lanza un error claro si se usa fuera de su provider.
 
 ### Datos (Firestore)
+
 - **Los componentes y contexts no llaman a Firebase**: todo pasa por `src/services/*`.
 - Cada colección se tipa una vez con `typedCollection<T>()` (`src/services/firestore.ts`).
 - `onSnapshot` solo para lo que cambia mientras se mira (perfil, casas, payroll). Catálogos,
@@ -131,6 +139,7 @@ mala práctica, señálala y propón la corrección; no la repliques.
   propósito: si no, la app avisaría "casa retirada" de todas. No quites esa protección.
 
 ### Estilos
+
 - Nada de estilos en línea con valores fijos: `StyleSheet.create` en `Componente.styles.ts`,
   junto al componente. Todo valor sale de `src/theme/tokens.ts`.
 - En línea solo valores calculados en tiempo de ejecución (color de un status de Firestore,
@@ -141,6 +150,7 @@ mala práctica, señálala y propón la corrección; no la repliques.
 - `pointerEvents` va en el estilo, no como prop (deprecado).
 
 ### Textos, fechas e íconos
+
 - Textos de interfaz en inglés, centralizados en `src/constants/strings.ts` (`import { t, fmt }`);
   nunca escritos en el JSX. Sin i18n ni context de idioma: si algún día vuelve otro idioma, se
   reintroduce a partir de este archivo.
@@ -149,7 +159,9 @@ mala práctica, señálala y propón la corrección; no la repliques.
 - Íconos: `lucide-react-native`.
 
 ### Formato
-- Prettier con `.prettierrc` (comillas simples, 180 columnas).
+
+- Prettier con `.prettierrc` (comillas simples, 180 columnas, indentación de 4 espacios).
+  VS Code formatea al guardar (`.vscode/settings.json`).
 
 ## Estilo visual (al cliente le gusta: no cambiarlo)
 
@@ -170,18 +182,18 @@ mala práctica, señálala y propón la corrección; no la repliques.
 
 Las dos apps escriben los mismos documentos. Si cambias uno de estos campos, la web se rompe.
 
-| Qué | Dónde | Quién escribe |
-|---|---|---|
-| Perfil del empleado | `system_users` (match por `email` en minúsculas) | Web |
-| Rol / permisos | `settings_roles` (`Administrator` = super admin; módulo `Houses`: `scope`, `allowedStatusIds`, `readOnlyFields`, `canEdit`) | Web |
-| Visibilidad por rol | `app_settings/houses_form_config` (`visibility[elementId] = roleId[]`, `readOnly`) — mismos ids que `HousesView.tsx` de la web: `btn_startJob`, `btn_markFinished`, `btn_takePhoto`, `btn_uploadPhoto`, `card_photos`, `btn_tabMedia`, `employeeNote`, `note`, `status_<id>`, … | Web |
-| Config de fotos | `app_settings/photo_config` | Web |
-| Casas asignadas | `properties` donde `assignedWorkers` contiene el id del usuario **o** `teamId` = su equipo | Web |
-| Start / Finish | `employeeStartedAt/By/ById`, `employeeFinishedAt/By/ById` (ISO, nombre completo, id) | Móvil y web |
-| Fotos | Storage `{Cliente}/BeforePhotos\|AfterPhotos/{dirección}_{marca única}.jpg`; URL agregada con `arrayUnion` a `beforePhotos` / `afterPhotos` | Móvil y web |
-| Notas | `employeeNote` (texto concatenado con `\n`) + entrada en `notesHistory` `{field, text, user: email, at, action}` | Móvil y web |
-| Payroll | `payroll` filtrado por `employeeId`; total = `totalAmount` o `base + extra − discount` | Web (móvil solo lee) |
-| Bitácora | `activity_logs`; `detail` termina en `"(app móvil)"` — no cambiar sin confirmar con la web | Ambas |
+| Qué                 | Dónde                                                                                                                                                                                                                                                                           | Quién escribe        |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| Perfil del empleado | `system_users` (match por `email` en minúsculas)                                                                                                                                                                                                                                | Web                  |
+| Rol / permisos      | `settings_roles` (`Administrator` = super admin; módulo `Houses`: `scope`, `allowedStatusIds`, `readOnlyFields`, `canEdit`)                                                                                                                                                     | Web                  |
+| Visibilidad por rol | `app_settings/houses_form_config` (`visibility[elementId] = roleId[]`, `readOnly`) — mismos ids que `HousesView.tsx` de la web: `btn_startJob`, `btn_markFinished`, `btn_takePhoto`, `btn_uploadPhoto`, `card_photos`, `btn_tabMedia`, `employeeNote`, `note`, `status_<id>`, … | Web                  |
+| Config de fotos     | `app_settings/photo_config`                                                                                                                                                                                                                                                     | Web                  |
+| Casas asignadas     | `properties` donde `assignedWorkers` contiene el id del usuario **o** `teamId` = su equipo                                                                                                                                                                                      | Web                  |
+| Start / Finish      | `employeeStartedAt/By/ById`, `employeeFinishedAt/By/ById` (ISO, nombre completo, id)                                                                                                                                                                                            | Móvil y web          |
+| Fotos               | Storage `{Cliente}/BeforePhotos\|AfterPhotos/{dirección}_{marca única}.jpg`; URL agregada con `arrayUnion` a `beforePhotos` / `afterPhotos`                                                                                                                                     | Móvil y web          |
+| Notas               | `employeeNote` (texto concatenado con `\n`) + entrada en `notesHistory` `{field, text, user: email, at, action}`                                                                                                                                                                | Móvil y web          |
+| Payroll             | `payroll` filtrado por `employeeId`; total = `totalAmount` o `base + extra − discount`                                                                                                                                                                                          | Web (móvil solo lee) |
+| Bitácora            | `activity_logs`; `detail` termina en `"(app móvil)"` — no cambiar sin confirmar con la web                                                                                                                                                                                      | Ambas                |
 
 Si la web cambia uno de estos campos, actualiza `src/types/index.ts` y el servicio correspondiente.
 Reglas de negocio portadas de la web: fotos bloqueadas hasta Start Job para roles sin Edit;
@@ -214,9 +226,11 @@ Finish exige Start + ≥1 foto Before y ≥1 After; solo quien marcó o un admin
 ```bash
 npx tsc --noEmit
 npx expo lint
+npm run format:check                 # formato Prettier (npm run format lo corrige)
 npx expo-doctor
 npx expo export --platform android   # y --platform ios: confirma que Metro empaqueta
 grep -rn "style={{" src              # solo valores de runtime
 ```
+
 Compilar no prueba que funcione: cámara, fotos y conexión se prueban en un teléfono
 (Expo Go o development build).

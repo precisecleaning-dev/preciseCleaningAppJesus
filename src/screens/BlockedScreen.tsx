@@ -11,27 +11,27 @@ import { styles } from './BlockedScreen.styles';
 import { t } from '../constants/strings';
 
 export default function BlockedScreen({ reason }: { reason: 'noProfile' | 'inactive' }) {
-  const { signOut, authUser } = useSession();
-  return (
-    <SafeAreaView style={styles.screen}>
-      <StatusBar style="dark" />
-      <EmptyState
-        icon={UserX}
-        gradient={gradients.amber}
-        orbits={[
-          { icon: ShieldAlert, accent: 'coral' },
-          { icon: Mail, accent: 'sky' },
-          { icon: UserX, accent: 'violet' },
-        ]}
-        title={t.noProfileTitle}
-        body={reason === 'inactive' ? t.inactiveBody : t.noProfileBody}
-      />
-      <AppText variant="small" tone="muted" center>
-        {authUser?.email}
-      </AppText>
-      <View style={styles.action}>
-        <Button variant="outline" label={t.signOut} onPress={signOut} />
-      </View>
-    </SafeAreaView>
-  );
+    const { signOut, authUser } = useSession();
+    return (
+        <SafeAreaView style={styles.screen}>
+            <StatusBar style="dark" />
+            <EmptyState
+                icon={UserX}
+                gradient={gradients.amber}
+                orbits={[
+                    { icon: ShieldAlert, accent: 'coral' },
+                    { icon: Mail, accent: 'sky' },
+                    { icon: UserX, accent: 'violet' },
+                ]}
+                title={t.noProfileTitle}
+                body={reason === 'inactive' ? t.inactiveBody : t.noProfileBody}
+            />
+            <AppText variant="small" tone="muted" center>
+                {authUser?.email}
+            </AppText>
+            <View style={styles.action}>
+                <Button variant="outline" label={t.signOut} onPress={signOut} />
+            </View>
+        </SafeAreaView>
+    );
 }

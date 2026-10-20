@@ -7,19 +7,19 @@ import { styles } from './LoadingScreen.styles';
 import AppText from './ui/AppText';
 
 export default function LoadingScreen({ label }: { label: string }) {
-  return (
-    <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.fill}>
-      <Animated.View entering={ZoomIn.springify().damping(12)} style={styles.box}>
-        <Image source={require('../../assets/logo-mark.png')} style={styles.logo} contentFit="contain" />
-      </Animated.View>
-      <View style={styles.spinner}>
-        <ActivityIndicator color={colors.white} size="large" />
-      </View>
-      <Animated.View entering={FadeIn.delay(200)}>
-        <AppText variant="title" tone="inverse" center>
-          {label}
-        </AppText>
-      </Animated.View>
-    </LinearGradient>
-  );
+    return (
+        <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.fill}>
+            <Animated.View entering={ZoomIn.springify().damping(12)} style={styles.box}>
+                <Image source={require('../../assets/logo-mark.png')} style={styles.logo} contentFit="contain" />
+            </Animated.View>
+            <View style={styles.spinner}>
+                <ActivityIndicator color={colors.white} size="large" />
+            </View>
+            <Animated.View entering={FadeIn.delay(200)}>
+                <AppText variant="title" tone="inverse" center>
+                    {label}
+                </AppText>
+            </Animated.View>
+        </LinearGradient>
+    );
 }

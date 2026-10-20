@@ -1,59 +1,57 @@
 {
-  "expo": {
-    "name": "Precise Cleaning",
-    "slug": "precise-crew",
-    "scheme": "precisecrew",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/logo-mark-white.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#1570EF"
-    },
-    "ios": {
-      "bundleIdentifier": "com.precisecleaningtx.crew",
-      "supportsTablet": true,
-      "infoPlist": {
-        "NSCameraUsageDescription": "Precise Cleaning uses the camera to take Before/After photos of each house.",
-        "NSPhotoLibraryUsageDescription": "Precise Cleaning needs access to your photos to upload Before/After photos of each house.",
-        "ITSAppUsesNonExemptEncryption": false
-      }
-    },
-    "android": {
-      "package": "com.precisecleaningtx.crew",
-      "adaptiveIcon": {
-        "backgroundColor": "#ffffff",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
-      },
-      "permissions": [
-        "android.permission.CAMERA"
-      ],
-      "predictiveBackGestureEnabled": false
-    },
-    "plugins": [
-      [
-        "expo-image-picker",
-        {
-          "cameraPermission": "Precise Cleaning uses the camera to take Before/After photos of each house.",
-          "photosPermission": "Precise Cleaning needs access to your photos to upload Before/After photos of each house."
+    "expo": {
+        "name": "Precise Cleaning",
+        "slug": "precise-crew",
+        "scheme": "precisecrew",
+        "version": "1.0.0",
+        "orientation": "portrait",
+        "icon": "./assets/icon.png",
+        "userInterfaceStyle": "light",
+        "splash": {
+            "image": "./assets/logo-mark-white.png",
+            "resizeMode": "contain",
+            "backgroundColor": "#1570EF"
+        },
+        "ios": {
+            "bundleIdentifier": "com.precisecleaningtx.crew",
+            "supportsTablet": true,
+            "infoPlist": {
+                "NSCameraUsageDescription": "Precise Cleaning uses the camera to take Before/After photos of each house.",
+                "NSPhotoLibraryUsageDescription": "Precise Cleaning needs access to your photos to upload Before/After photos of each house.",
+                "ITSAppUsesNonExemptEncryption": false
+            }
+        },
+        "android": {
+            "package": "com.precisecleaningtx.crew",
+            "adaptiveIcon": {
+                "backgroundColor": "#ffffff",
+                "foregroundImage": "./assets/android-icon-foreground.png",
+                "backgroundImage": "./assets/android-icon-background.png",
+                "monochromeImage": "./assets/android-icon-monochrome.png"
+            },
+            "permissions": ["android.permission.CAMERA"],
+            "predictiveBackGestureEnabled": false
+        },
+        "plugins": [
+            [
+                "expo-image-picker",
+                {
+                    "cameraPermission": "Precise Cleaning uses the camera to take Before/After photos of each house.",
+                    "photosPermission": "Precise Cleaning needs access to your photos to upload Before/After photos of each house."
+                }
+            ],
+            [
+                "expo-splash-screen",
+                {
+                    "backgroundColor": "#1570EF",
+                    "image": "./assets/logo-mark-white.png",
+                    "imageWidth": 120
+                }
+            ],
+            "expo-font"
+        ],
+        "experiments": {
+            "reactCompiler": true
         }
-      ],
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#1570EF",
-          "image": "./assets/logo-mark-white.png",
-          "imageWidth": 120
-        }
-      ],
-      "expo-font"
-    ],
-    "experiments": {
-      "reactCompiler": true
     }
-  }
 }

@@ -33,120 +33,120 @@ type Props = CompositeScreenProps<BottomTabScreenProps<TabParams, 'Home'>, Nativ
 const greeting = (h: number) => (h < 12 ? t.greetingMorning : h < 19 ? t.greetingAfternoon : t.greetingEvening);
 
 function Stat({ icon: Icon, value, label, accent }: { icon: LucideIcon; value: number; label: string; accent: AccentName }) {
-  return (
-    <View style={styles.stat}>
-      <View style={[styles.statIcon, solidBg[accent]]}>
-        <Icon size={16} color={colors.white} strokeWidth={2.4} />
-      </View>
-      <AppText style={styles.statValue}>{value}</AppText>
-      <AppText variant="caption" tone="inverseMuted" numberOfLines={1}>
-        {label}
-      </AppText>
-    </View>
-  );
+    return (
+        <View style={styles.stat}>
+            <View style={[styles.statIcon, solidBg[accent]]}>
+                <Icon size={16} color={colors.white} strokeWidth={2.4} />
+            </View>
+            <AppText style={styles.statValue}>{value}</AppText>
+            <AppText variant="caption" tone="inverseMuted" numberOfLines={1}>
+                {label}
+            </AppText>
+        </View>
+    );
 }
 
 export default function HomeScreen({ navigation }: Props) {
-  const user = useCurrentUser();
-  const { jobs, jobsLoaded } = useJobs();
-  const { queue, pendingFor } = usePhotoQueue();
-  const { unread } = useNotifications();
-  const [segment, setSegment] = useState<Segment>('today');
+    const user = useCurrentUser();
+    const { jobs, jobsLoaded } = useJobs();
+    const { queue, pendingFor } = usePhotoQueue();
+    const { unread } = useNotifications();
+    const [segment, setSegment] = useState<Segment>('today');
 
-  const now = useNow();
-  const grouped = groupJobs(jobs, now);
+    const now = useNow();
+    const grouped = groupJobs(jobs, now);
 
-  const inProgress = grouped.today.filter((j) => workStateOf(j) === 'inProgress').length;
-  const nextJob = grouped.today.find((j) => workStateOf(j) !== 'finished') ?? null;
-  const openJob = (j: Property) => navigation.navigate('JobDetail', { jobId: j.id });
+    const inProgress = grouped.today.filter((j) => workStateOf(j) === 'inProgress').length;
+    const nextJob = grouped.today.find((j) => workStateOf(j) !== 'finished') ?? null;
+    const openJob = (j: Property) => navigation.navigate('JobDetail', { jobId: j.id });
 
-  const today = `${t.weekdays[now.getDay()]}, ${formatDate(now)}`;
-  const initials = initialsOf(user);
+    const today = `${t.weekdays[now.getDay()]}, ${formatDate(now)}`;
+    const initials = initialsOf(user);
 
-  const empty = {
-    today: { title: t.noJobsTodayTitle, body: t.noJobsTodayBody, icon: CalendarCheck, gradient: gradients.brand },
-    upcoming: { title: t.noUpcomingTitle, body: t.noUpcomingBody, icon: CalendarClock, gradient: gradients.violet },
-    history: { title: t.noHistoryTitle, body: t.noHistoryBody, icon: History, gradient: gradients.mint },
-  }[segment];
+    const empty = {
+        today: { title: t.noJobsTodayTitle, body: t.noJobsTodayBody, icon: CalendarCheck, gradient: gradients.brand },
+        upcoming: { title: t.noUpcomingTitle, body: t.noUpcomingBody, icon: CalendarClock, gradient: gradients.violet },
+        history: { title: t.noHistoryTitle, body: t.noHistoryBody, icon: History, gradient: gradients.mint },
+    }[segment];
 
-  const header = (
-    <View>
-      <GradientHeader overlap={70}>
-        <View style={styles.topRow}>
-          <View style={styles.avatar}>
-            <AppText variant="title" tone="inverse">
-              {initials}
-            </AppText>
-          </View>
-          <View style={styles.hello}>
-            <AppText variant="small" tone="inverseMuted">
-              {today}
-            </AppText>
-            <AppText variant="h1" tone="inverse" numberOfLines={1}>
-              {greeting(now.getHours())}, {user.firstName}
-            </AppText>
-          </View>
-          <IconButton icon={Bell} onPress={() => navigation.navigate('Notifications')} label={t.notifTitle} badge={unread} />
-        </View>
-        <View style={styles.stats}>
-          <Stat icon={CalendarDays} value={grouped.today.length} label={t.statToday} accent="sky" />
-          <Stat icon={CirclePlay} value={inProgress} label={t.statInProgress} accent="violet" />
-          <Stat icon={CloudUpload} value={queue.length} label={t.statPhotos} accent="amber" />
-        </View>
-      </GradientHeader>
-      <View style={styles.overlap}>{jobsLoaded ? <NextJobCard job={nextJob} onOpen={openJob} /> : <JobCardSkeleton />}</View>
-      <View style={styles.tabs}>
-        <SegmentedTabs
-          value={segment}
-          onChange={setSegment}
-          options={[
-            { value: 'today', label: t.segToday, count: grouped.today.length },
-            { value: 'upcoming', label: t.segUpcoming, count: grouped.upcoming.length },
-            { value: 'history', label: t.segHistory },
-          ]}
-        />
-      </View>
-    </View>
-  );
-
-  return (
-    <View style={styles.screen}>
-      <StatusScrim />
-      <FlatList
-        data={jobsLoaded ? grouped[segment] : []}
-        keyExtractor={(j) => j.id}
-        ListHeaderComponent={header}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <View style={styles.item}>
-            <JobCard job={item} pending={pendingFor(item.id).length} onPress={openJob} />
-          </View>
-        )}
-        ListEmptyComponent={
-          jobsLoaded ? (
-            <EmptyState
-              icon={empty.icon}
-              gradient={empty.gradient}
-              orbits={[
-                { icon: House, accent: 'sky' },
-                { icon: Sparkles, accent: 'amber' },
-                { icon: Bell, accent: 'coral' },
-              ]}
-              title={empty.title}
-              body={empty.body}
-            />
-          ) : (
-            <View style={styles.skeletons}>
-              <JobCardSkeleton />
-              <JobCardSkeleton />
-              <JobCardSkeleton />
+    const header = (
+        <View>
+            <GradientHeader overlap={70}>
+                <View style={styles.topRow}>
+                    <View style={styles.avatar}>
+                        <AppText variant="title" tone="inverse">
+                            {initials}
+                        </AppText>
+                    </View>
+                    <View style={styles.hello}>
+                        <AppText variant="small" tone="inverseMuted">
+                            {today}
+                        </AppText>
+                        <AppText variant="h1" tone="inverse" numberOfLines={1}>
+                            {greeting(now.getHours())}, {user.firstName}
+                        </AppText>
+                    </View>
+                    <IconButton icon={Bell} onPress={() => navigation.navigate('Notifications')} label={t.notifTitle} badge={unread} />
+                </View>
+                <View style={styles.stats}>
+                    <Stat icon={CalendarDays} value={grouped.today.length} label={t.statToday} accent="sky" />
+                    <Stat icon={CirclePlay} value={inProgress} label={t.statInProgress} accent="violet" />
+                    <Stat icon={CloudUpload} value={queue.length} label={t.statPhotos} accent="amber" />
+                </View>
+            </GradientHeader>
+            <View style={styles.overlap}>{jobsLoaded ? <NextJobCard job={nextJob} onOpen={openJob} /> : <JobCardSkeleton />}</View>
+            <View style={styles.tabs}>
+                <SegmentedTabs
+                    value={segment}
+                    onChange={setSegment}
+                    options={[
+                        { value: 'today', label: t.segToday, count: grouped.today.length },
+                        { value: 'upcoming', label: t.segUpcoming, count: grouped.upcoming.length },
+                        { value: 'history', label: t.segHistory },
+                    ]}
+                />
             </View>
-          )
-        }
-        initialNumToRender={8}
-        windowSize={7}
-      />
-    </View>
-  );
+        </View>
+    );
+
+    return (
+        <View style={styles.screen}>
+            <StatusScrim />
+            <FlatList
+                data={jobsLoaded ? grouped[segment] : []}
+                keyExtractor={(j) => j.id}
+                ListHeaderComponent={header}
+                contentContainerStyle={styles.list}
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item }) => (
+                    <View style={styles.item}>
+                        <JobCard job={item} pending={pendingFor(item.id).length} onPress={openJob} />
+                    </View>
+                )}
+                ListEmptyComponent={
+                    jobsLoaded ? (
+                        <EmptyState
+                            icon={empty.icon}
+                            gradient={empty.gradient}
+                            orbits={[
+                                { icon: House, accent: 'sky' },
+                                { icon: Sparkles, accent: 'amber' },
+                                { icon: Bell, accent: 'coral' },
+                            ]}
+                            title={empty.title}
+                            body={empty.body}
+                        />
+                    ) : (
+                        <View style={styles.skeletons}>
+                            <JobCardSkeleton />
+                            <JobCardSkeleton />
+                            <JobCardSkeleton />
+                        </View>
+                    )
+                }
+                initialNumToRender={8}
+                windowSize={7}
+            />
+        </View>
+    );
 }
