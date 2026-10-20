@@ -48,6 +48,22 @@ mala práctica, señálala y propón la corrección; no la repliques.
   - `camelCase` para variables, funciones, hooks y props.
   - `PascalCase` para componentes, tipos e interfaces.
   - `UPPER_SNAKE_CASE` para constantes de módulo (`MAX_ATTEMPTS`).
+- **Nombres claros, sin abreviaciones (clean code).** El nombre dice qué es o qué hace, sin
+  tener que leer el código alrededor:
+
+  | En vez de… | Usa… |
+  |---|---|
+  | `p`, `j`, `q`, `r` | `property`, `job`, `queuedPhoto`, `record` |
+  | `v`, `st`, `agg`, `idx` | `visual`, `status`, `photoCount`, `photoIndex` |
+  | `cfg`, `ctx`, `snap`, `err` | `photoConfig`, `context`, `snapshot`, `error` |
+  | `data`, `info`, `item`, `tmp` | el nombre del dominio: `jobs`, `payrollRecords`, `pendingNote` |
+
+  - Funciones con verbo: `formatDate`, `loadCatalogs`, `canUndoMark`.
+  - Booleanos como pregunta: `isOverdue`, `hasPhotos`, `canEdit`, `shouldRetry`.
+  - Handlers con `handle` + evento: `handleStartPress`; sus props con `on`: `onStart`.
+  - Excepciones aceptadas: `i` en un `for` corto, `_` para un parámetro que no se usa, y `t` /
+    `fmt` de `src/constants/strings.ts`, que se usan en todas las vistas.
+  - Igual que con las funciones flecha: renombra en los archivos que ya estés modificando.
 - Archivos: componentes y pantallas `PascalCase.tsx`; hooks `useAlgo.ts`; servicios y utilidades
   `camelCase.ts`.
 - Sin `any`. Evita `as` para "convencer" al compilador; si un dato externo puede faltar, tipéalo
@@ -125,7 +141,9 @@ mala práctica, señálala y propón la corrección; no la repliques.
 - `pointerEvents` va en el estilo, no como prop (deprecado).
 
 ### Textos, fechas e íconos
-- Textos de interfaz en inglés, centralizados en `src/i18n/strings.ts`; nunca escritos en el JSX.
+- Textos de interfaz en inglés, centralizados en `src/constants/strings.ts` (`import { t, fmt }`);
+  nunca escritos en el JSX. Sin i18n ni context de idioma: si algún día vuelve otro idioma, se
+  reintroduce a partir de este archivo.
 - Fechas con `src/utils/dateFormat.ts` (`formatDate` MM/DD/YYYY, `formatTime` h:mm AM/PM).
   Nunca `toLocaleDateString` / `toLocaleTimeString`. "Hoy" sale de `useNow()`.
 - Íconos: `lucide-react-native`.

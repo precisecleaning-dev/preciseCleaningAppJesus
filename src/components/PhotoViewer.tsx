@@ -2,9 +2,9 @@ import { Image } from 'expo-image';
 import { X } from 'lucide-react-native';
 import { FlatList, Modal, Pressable, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLanguage } from '../context/LanguageContext';
 import { colors } from '../theme/tokens';
 import { styles } from './PhotoViewer.styles';
+import { t } from '../constants/strings';
 
 interface Props {
   uris: string[];
@@ -14,7 +14,6 @@ interface Props {
 
 export default function PhotoViewer({ uris, index, onClose }: Props) {
   const { width, height } = useWindowDimensions();
-  const { t } = useLanguage();
   return (
     <Modal visible={index !== null} animationType="none" transparent onRequestClose={onClose} statusBarTranslucent>
       <SafeAreaView style={styles.backdrop}>

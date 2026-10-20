@@ -15,11 +15,9 @@ import IconButton from '../components/ui/IconButton';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { JobCardSkeleton } from '../components/ui/Skeleton';
 import { useJobs } from '../context/JobsContext';
-import { useLanguage } from '../context/LanguageContext';
 import { useNotifications } from '../context/NotificationsContext';
 import { usePhotoQueue } from '../context/PhotoQueueContext';
 import { useCurrentUser } from '../context/SessionContext';
-import type { Strings } from '../i18n/strings';
 import type { RootStackParams, TabParams } from '../navigation/types';
 import { solidBg } from '../theme/accentStyles';
 import { colors, gradients, type AccentName } from '../theme/tokens';
@@ -28,10 +26,11 @@ import { formatDate } from '../utils/dateFormat';
 import { initialsOf } from '../utils/ids';
 import { groupJobs, workStateOf, type Segment } from '../utils/jobState';
 import { styles } from './HomeScreen.styles';
+import { t } from '../constants/strings';
 
 type Props = CompositeScreenProps<BottomTabScreenProps<TabParams, 'Home'>, NativeStackScreenProps<RootStackParams>>;
 
-const greeting = (t: Strings, h: number) => (h < 12 ? t.greetingMorning : h < 19 ? t.greetingAfternoon : t.greetingEvening);
+const greeting = (h: number) => (h < 12 ? t.greetingMorning : h < 19 ? t.greetingAfternoon : t.greetingEvening);
 
 function Stat({ icon: Icon, value, label, accent }: { icon: LucideIcon; value: number; label: string; accent: AccentName }) {
   return (
@@ -48,7 +47,6 @@ function Stat({ icon: Icon, value, label, accent }: { icon: LucideIcon; value: n
 }
 
 export default function HomeScreen({ navigation }: Props) {
-  const { t } = useLanguage();
   const user = useCurrentUser();
   const { jobs, jobsLoaded } = useJobs();
   const { queue, pendingFor } = usePhotoQueue();
@@ -85,7 +83,7 @@ export default function HomeScreen({ navigation }: Props) {
               {today}
             </AppText>
             <AppText variant="h1" tone="inverse" numberOfLines={1}>
-              {greeting(t, now.getHours())}, {user.firstName}
+              {greeting(now.getHours())}, {user.firstName}
             </AppText>
           </View>
           <IconButton icon={Bell} onPress={() => navigation.navigate('Notifications')} label={t.notifTitle} badge={unread} />

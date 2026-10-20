@@ -31,11 +31,9 @@ import IconBubble from '../components/ui/IconBubble';
 import Touchable from '../components/ui/Touchable';
 import { useCatalogs } from '../context/CatalogsContext';
 import { useJobs } from '../context/JobsContext';
-import { useLanguage } from '../context/LanguageContext';
 import { useOutbox } from '../context/OutboxContext';
 import { usePhotoQueue } from '../context/PhotoQueueContext';
 import { useCurrentUser, useSession } from '../context/SessionContext';
-import { fmt } from '../i18n/strings';
 import type { RootStackParams } from '../navigation/types';
 import { canUndoMark, missingPhotoKinds } from '../services/jobsService';
 import { accents, colors, gradients, type AccentName } from '../theme/tokens';
@@ -43,6 +41,7 @@ import { formatDate, formatDateTime } from '../utils/dateFormat';
 import { jobVisual } from '../utils/jobVisual';
 import { findRelation } from '../utils/relations';
 import { styles } from './JobDetailScreen.styles';
+import { fmt, t } from '../constants/strings';
 
 type Props = NativeStackScreenProps<RootStackParams, 'JobDetail'>;
 
@@ -55,7 +54,6 @@ const confirm = (title: string, message: string, okLabel: string, cancelLabel: s
   );
 
 export default function JobDetailScreen({ route, navigation }: Props) {
-  const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const user = useCurrentUser();
   const { isSuperAdmin, housesPermission, isElementVisible, isFieldReadOnly } = useSession();
@@ -93,7 +91,7 @@ export default function JobDetailScreen({ route, navigation }: Props) {
     );
   }
 
-  const v = jobVisual(job, t);
+  const v = jobVisual(job);
   const status = statusOf(job);
   const team = findRelation(teams, job.teamId);
   const priority = findRelation(priorities, job.priorityId);

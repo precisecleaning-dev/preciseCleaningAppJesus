@@ -7,22 +7,20 @@ import EmptyState from '../components/ui/EmptyState';
 import IconBubble from '../components/ui/IconBubble';
 import IconButton from '../components/ui/IconButton';
 import Touchable from '../components/ui/Touchable';
-import { useLanguage } from '../context/LanguageContext';
 import { useNotifications } from '../context/NotificationsContext';
 import type { AppNotification } from '../utils/notificationDiff';
-import { fmt } from '../i18n/strings';
 import type { RootStackParams } from '../navigation/types';
 import { gradients } from '../theme/tokens';
 import { useNow } from '../hooks/useNow';
 import { startOfToday } from '../utils/dateFormat';
 import { notificationView, timeAgo } from '../utils/notificationView';
 import { styles } from './NotificationsScreen.styles';
+import { fmt, t } from '../constants/strings';
 
 type Props = NativeStackScreenProps<RootStackParams, 'Notifications'>;
 
 function Row({ n, now, onOpen }: { n: AppNotification; now: number; onOpen: (n: AppNotification) => void }) {
-  const { t } = useLanguage();
-  const v = notificationView(n, t);
+  const v = notificationView(n);
   return (
     <Touchable onPress={() => onOpen(n)} style={[styles.row, !n.read && styles.unread]} accessibilityLabel={`${v.title}. ${v.body}`}>
       <IconBubble icon={v.icon} accent={v.accent} />
@@ -32,7 +30,7 @@ function Row({ n, now, onOpen }: { n: AppNotification; now: number; onOpen: (n: 
             {v.title}
           </AppText>
           <AppText variant="caption" tone="soft">
-            {timeAgo(n.at, t, now)}
+            {timeAgo(n.at, now)}
           </AppText>
         </View>
         <AppText variant="small" tone="body" numberOfLines={3}>
@@ -45,7 +43,6 @@ function Row({ n, now, onOpen }: { n: AppNotification; now: number; onOpen: (n: 
 }
 
 export default function NotificationsScreen({ navigation }: Props) {
-  const { t } = useLanguage();
   const { list, unread, markRead, markAllRead } = useNotifications();
 
   const now = useNow();

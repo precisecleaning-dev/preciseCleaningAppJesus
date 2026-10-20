@@ -10,22 +10,21 @@ import GradientHeader from '../components/ui/GradientHeader';
 import IconBubble from '../components/ui/IconBubble';
 import { JobCardSkeleton } from '../components/ui/Skeleton';
 import { useJobs } from '../context/JobsContext';
-import { useLanguage } from '../context/LanguageContext';
 import { useOnline } from '../context/NetworkContext';
 import { usePayroll } from '../context/PayrollContext';
 import { getPropertiesByIds } from '../services/propertiesService';
 import { paymentTime, recordTotal } from '../services/payrollService';
-import { fmt, type Strings } from '../i18n/strings';
 import { colors, gradients } from '../theme/tokens';
 import type { PayrollRecord, Property } from '../types';
 import { DAY_MS, formatDate, money, weekStartOf } from '../utils/dateFormat';
 import { styles } from './PayrollScreen.styles';
+import { fmt, t } from '../constants/strings';
 
 const WEEKS = 6;
 
 const sumOf = (list: PayrollRecord[]) => list.reduce((sum, r) => sum + recordTotal(r), 0);
 
-function summarize(records: PayrollRecord[], t: Strings) {
+function summarize(records: PayrollRecord[]) {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
   const thisWeek = weekStartOf(now.getTime());
@@ -62,7 +61,6 @@ function summarize(records: PayrollRecord[], t: Strings) {
 }
 
 export default function PayrollScreen() {
-  const { t } = useLanguage();
   const { getJob, clientName, requestClients } = useJobs();
   const { records, loaded } = usePayroll();
   const online = useOnline();
@@ -88,7 +86,7 @@ export default function PayrollScreen() {
     requestClients(otherClients.split('|'));
   }, [otherClients, requestClients]);
 
-  const { sections, totalPending, paidThisMonth, bars } = summarize(records, t);
+  const { sections, totalPending, paidThisMonth, bars } = summarize(records);
 
   const houseLabel = (r: PayrollRecord): string => {
     if (!r.propertyId) return r.extraNote || r.discountNote || t.adjustment;

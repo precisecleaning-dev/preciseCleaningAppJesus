@@ -5,13 +5,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AppText from '../components/ui/AppText';
 import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
-import { useLanguage } from '../context/LanguageContext';
 import { useSession } from '../context/SessionContext';
 import { gradients } from '../theme/tokens';
 import { styles } from './BlockedScreen.styles';
+import { t } from '../constants/strings';
 
 export default function BlockedScreen({ reason }: { reason: 'noProfile' | 'inactive' }) {
-  const { t } = useLanguage();
   const { signOut, authUser } = useSession();
   return (
     <SafeAreaView style={styles.screen}>

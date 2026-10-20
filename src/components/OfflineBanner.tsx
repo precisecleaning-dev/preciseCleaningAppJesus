@@ -1,15 +1,14 @@
 import { CloudOff } from 'lucide-react-native';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLanguage } from '../context/LanguageContext';
 import { useOnline } from '../context/NetworkContext';
 import { accents } from '../theme/tokens';
 import { styles } from './OfflineBanner.styles';
 import AppText from './ui/AppText';
+import { t } from '../constants/strings';
 
 export default function OfflineBanner() {
   const isOnline = useOnline();
-  const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   if (isOnline) return null;
   return (

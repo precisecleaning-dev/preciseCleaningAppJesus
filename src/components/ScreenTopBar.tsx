@@ -1,11 +1,11 @@
 import { ChevronLeft } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
-import { useLanguage } from '../context/LanguageContext';
 import AppText from './ui/AppText';
 import GradientHeader from './ui/GradientHeader';
 import IconButton from './ui/IconButton';
 import { styles } from './ScreenTopBar.styles';
+import { t } from '../constants/strings';
 
 interface Props {
   title: string;
@@ -17,7 +17,6 @@ interface Props {
 }
 
 export default function ScreenTopBar({ title, subtitle, onBack, right, children, overlap }: Props) {
-  const { t } = useLanguage();
   return (
     <GradientHeader overlap={overlap}>
       <View style={styles.row}>

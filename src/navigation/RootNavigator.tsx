@@ -10,7 +10,6 @@ import OfflineBanner from '../components/OfflineBanner';
 import TabBar from '../components/ui/TabBar';
 import { CatalogsProvider } from '../context/CatalogsContext';
 import { JobsProvider } from '../context/JobsContext';
-import { useLanguage } from '../context/LanguageContext';
 import { NotificationsProvider } from '../context/NotificationsContext';
 import { OutboxProvider } from '../context/OutboxContext';
 import { PayrollProvider } from '../context/PayrollContext';
@@ -27,6 +26,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import { colors } from '../theme/tokens';
 import { navigationRef } from './navigationRef';
 import type { RootStackParams, TabParams } from './types';
+import { t } from '../constants/strings';
 
 const Stack = createNativeStackNavigator<RootStackParams>();
 const Tabs = createBottomTabNavigator<TabParams>();
@@ -40,7 +40,6 @@ const theme: Theme = {
 const TAB_ICONS = { Home: House, Payroll: Wallet, Profile: User };
 
 function MainTabs() {
-  const { t } = useLanguage();
   const labels = { Home: t.tabHome, Payroll: t.tabPayroll, Profile: t.tabProfile };
   return (
     <Tabs.Navigator screenOptions={{ headerShown: false }} tabBar={(props) => <TabBar {...props} icons={TAB_ICONS} labels={labels} />}>
@@ -67,7 +66,6 @@ export function useOnboarded(): [boolean | null, () => void] {
 
 export default function RootNavigator({ onboarded, finishOnboarding }: { onboarded: boolean | null; finishOnboarding: () => void }) {
   const { state } = useSession();
-  const { t } = useLanguage();
 
   if (state === 'signingOut') return <LoadingScreen label={t.signingOut} />;
   if (state === 'checking' || state === 'loadingProfile' || onboarded === null) return <LoadingScreen label={t.loadingSession} />;

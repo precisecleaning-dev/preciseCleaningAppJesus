@@ -1,7 +1,6 @@
 import { Camera, ChevronRight, Clock, MapPin, Sparkles } from 'lucide-react-native';
 import { View } from 'react-native';
 import { useJobs } from '../context/JobsContext';
-import { useLanguage } from '../context/LanguageContext';
 import { useSession } from '../context/SessionContext';
 import { accents, colors } from '../theme/tokens';
 import type { Property } from '../types';
@@ -13,6 +12,7 @@ import AppText from './ui/AppText';
 import Chip from './ui/Chip';
 import IconBubble from './ui/IconBubble';
 import Touchable from './ui/Touchable';
+import { t } from '../constants/strings';
 
 interface Props {
   job: Property;
@@ -21,10 +21,9 @@ interface Props {
 }
 
 export default function JobCard({ job, pending, onPress }: Props) {
-  const { t } = useLanguage();
   const { clientName, serviceName, statusOf } = useJobs();
   const { isElementVisible } = useSession();
-  const v = jobVisual(job, t);
+  const v = jobVisual(job);
   const status = statusOf(job);
   const stripe = safeColor(status?.color, accents[v.accent].solid);
   const photos = (job.beforePhotos?.length || 0) + (job.afterPhotos?.length || 0);

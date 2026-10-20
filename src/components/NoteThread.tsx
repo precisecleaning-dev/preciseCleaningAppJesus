@@ -2,13 +2,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Send } from 'lucide-react-native';
 import { useState } from 'react';
 import { TextInput, View } from 'react-native';
-import { useLanguage } from '../context/LanguageContext';
 import { colors, gradients } from '../theme/tokens';
 import type { NoteHistoryEntry } from '../types';
 import { formatDateTime } from '../utils/dateFormat';
 import { styles } from './NoteThread.styles';
 import AppText from './ui/AppText';
 import Touchable from './ui/Touchable';
+import { t } from '../constants/strings';
 
 interface Props {
   title: string;
@@ -22,7 +22,6 @@ interface Props {
 }
 
 export default function NoteThread({ title, field, legacyText, history, pending = [], myEmail, canWrite, onSend }: Props) {
-  const { t } = useLanguage();
   const [draft, setDraft] = useState('');
 
   const entries = history.filter((e) => e.field === field && String(e.text || '').trim() !== '');

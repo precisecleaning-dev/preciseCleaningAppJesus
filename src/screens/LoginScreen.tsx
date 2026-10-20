@@ -8,14 +8,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppText from '../components/ui/AppText';
 import Button from '../components/ui/Button';
 import TextField from '../components/ui/TextField';
-import { useLanguage } from '../context/LanguageContext';
 import { resetPassword, signIn as authSignIn } from '../services/sessionService';
 import { colors, gradients } from '../theme/tokens';
 import { errorCode } from '../utils/ids';
 import { styles } from './LoginScreen.styles';
+import { t } from '../constants/strings';
 
 export default function LoginScreen() {
-  const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

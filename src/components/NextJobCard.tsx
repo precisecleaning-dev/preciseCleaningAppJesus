@@ -2,8 +2,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowRight, CalendarCheck, PartyPopper, Sparkles, Star } from 'lucide-react-native';
 import { View } from 'react-native';
 import { useJobs } from '../context/JobsContext';
-import { useLanguage } from '../context/LanguageContext';
-import { fmt } from '../i18n/strings';
 import { colors, gradients } from '../theme/tokens';
 import type { Property } from '../types';
 import { formatTime } from '../utils/dateFormat';
@@ -14,9 +12,9 @@ import AppText from './ui/AppText';
 import Illustration from './ui/Illustration';
 import IconBubble from './ui/IconBubble';
 import Touchable from './ui/Touchable';
+import { fmt, t } from '../constants/strings';
 
 export default function NextJobCard({ job, onOpen }: { job: Property | null; onOpen: (j: Property) => void }) {
-  const { t } = useLanguage();
   const { clientName } = useJobs();
 
   if (!job) {
@@ -42,7 +40,7 @@ export default function NextJobCard({ job, onOpen }: { job: Property | null; onO
     );
   }
 
-  const v = jobVisual(job, t);
+  const v = jobVisual(job);
   const running = workStateOf(job) === 'inProgress';
   const time = [job.timeIn, job.timeOut].filter(Boolean).join(' – ');
 

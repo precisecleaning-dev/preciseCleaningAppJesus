@@ -7,9 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AppText from '../components/ui/AppText';
 import Illustration, { type Orbits } from '../components/ui/Illustration';
 import Touchable from '../components/ui/Touchable';
-import { useLanguage } from '../context/LanguageContext';
 import { colors, gradients } from '../theme/tokens';
 import { styles } from './OnboardingScreen.styles';
+import { t } from '../constants/strings';
 
 interface Slide {
   icon: LucideIcon;
@@ -56,7 +56,6 @@ const SLIDES: Slide[] = [
 ];
 
 export default function OnboardingScreen({ onFinish }: { onFinish: () => void }) {
-  const { t } = useLanguage();
   const { width } = useWindowDimensions();
   const [page, setPage] = useState(0);
   const scroller = useRef<ScrollView>(null);

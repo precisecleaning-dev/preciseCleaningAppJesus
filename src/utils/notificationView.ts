@@ -1,5 +1,5 @@
 import { Banknote, CalendarClock, CircleDollarSign, House, MapPinOff, MessageSquareText, Tag, type LucideIcon } from 'lucide-react-native';
-import { fmt, type Strings } from '../i18n/strings';
+import { fmt, t } from '../constants/strings';
 import type { AppNotification, NotifKind } from './notificationDiff';
 import type { AccentName } from '../theme/tokens';
 import { formatDate, money } from './dateFormat';
@@ -21,7 +21,7 @@ const when = (v?: string) => {
   return [date, rest.join(' ')].filter(Boolean).join(' ');
 };
 
-export function notificationView(n: AppNotification, t: Strings) {
+export function notificationView(n: AppNotification) {
   const meta = META[n.kind];
   const vars = {
     client: n.client || t.house,
@@ -38,7 +38,7 @@ export function notificationView(n: AppNotification, t: Strings) {
   };
 }
 
-export function timeAgo(at: number, t: Strings, now = Date.now()): string {
+export function timeAgo(at: number, now = Date.now()): string {
   const min = Math.floor((now - at) / 60000);
   if (min < 1) return t.justNow;
   if (min < 60) return fmt(t.minAgo, { n: min });

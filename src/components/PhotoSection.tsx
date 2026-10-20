@@ -3,10 +3,8 @@ import { Camera, ImagePlus, TriangleAlert } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, View } from 'react-native';
 import { useCatalogs } from '../context/CatalogsContext';
-import { useLanguage } from '../context/LanguageContext';
 import { usePhotoQueue } from '../context/PhotoQueueContext';
 import { useSession } from '../context/SessionContext';
-import { fmt } from '../i18n/strings';
 import { pickPhotos } from '../services/photoService';
 import { errorCode } from '../utils/ids';
 import { accents, colors } from '../theme/tokens';
@@ -16,6 +14,7 @@ import PhotoViewer from './PhotoViewer';
 import AppText from './ui/AppText';
 import Touchable from './ui/Touchable';
 import ProgressRing from './ui/ProgressRing';
+import { fmt, t } from '../constants/strings';
 
 interface Props {
   kind: PhotoKind;
@@ -30,7 +29,6 @@ interface Props {
 type Tile = { type: 'add'; key: string; source: 'camera' | 'library' } | { type: 'photo'; key: string; uri: string; pending: boolean; failed: boolean; progress?: number };
 
 export default function PhotoSection({ kind, urls, propertyId, clientName, address, label, canAdd }: Props) {
-  const { t } = useLanguage();
   const { photoConfig } = useCatalogs();
   const { isElementVisible, isFieldReadOnly } = useSession();
   const { pendingFor, enqueue, current, localUri } = usePhotoQueue();

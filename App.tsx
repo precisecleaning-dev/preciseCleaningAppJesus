@@ -11,7 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AnimatedSplash from './src/components/AnimatedSplash';
-import { LanguageProvider, useLanguage } from './src/context/LanguageContext';
+import { t } from './src/constants/strings';
 import { NetworkProvider } from './src/context/NetworkContext';
 import { SessionProvider, useSession } from './src/context/SessionContext';
 import RootNavigator, { useOnboarded } from './src/navigation/RootNavigator';
@@ -20,7 +20,6 @@ SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 function Shell({ fontsReady }: { fontsReady: boolean }) {
   const { state } = useSession();
-  const { t } = useLanguage();
   const [onboarded, finishOnboarding] = useOnboarded();
   const [splashDone, setSplashDone] = useState(false);
   const ready = fontsReady && onboarded !== null && state !== 'checking' && state !== 'loadingProfile';
@@ -45,13 +44,11 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <LanguageProvider>
-        <NetworkProvider>
-          <SessionProvider>
-            <Shell fontsReady={fontsLoaded || !!fontError} />
-          </SessionProvider>
-        </NetworkProvider>
-      </LanguageProvider>
+      <NetworkProvider>
+        <SessionProvider>
+          <Shell fontsReady={fontsLoaded || !!fontError} />
+        </SessionProvider>
+      </NetworkProvider>
     </SafeAreaProvider>
   );
 }

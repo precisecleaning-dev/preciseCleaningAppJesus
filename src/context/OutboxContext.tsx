@@ -6,9 +6,9 @@ import { logActivity } from '../services/activityLog';
 import { applyEmployeeNote, applyMark, MARK_LABEL, markField, markPayload, type MarkKind, type MarkPayload } from '../services/jobsService';
 import type { NoteHistoryEntry, Property } from '../types';
 import { errorCode, makeId } from '../utils/ids';
-import { useLanguage } from './LanguageContext';
 import { checkOnline } from './NetworkContext';
 import { useCurrentUser } from './SessionContext';
+import { t } from '../constants/strings';
 
 type Op =
   | { type: 'mark'; id: string; userId: string; propertyId: string; label: string; payload: MarkPayload }
@@ -28,7 +28,6 @@ const isPermanent = (err: unknown) => /permission-denied|not-found|invalid-argum
 
 export function OutboxProvider({ children }: { children: ReactNode }) {
   const user = useCurrentUser();
-  const { t } = useLanguage();
   const { items, loaded, ref, update } = usePersistentList<Op>('pc_crew_outbox_v1');
   const inFlight = useRef(new Set<string>());
   const notesRunning = useRef(false);

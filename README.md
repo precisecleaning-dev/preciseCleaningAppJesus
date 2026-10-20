@@ -17,7 +17,7 @@ El empleado también ve su **Payroll** (pendiente / pagado, por semana).
 - **Detalle de casa**: dirección con botón a Mapas, Start Job / Mark Finished, fotos Before y
   After con cámara o galería, nota general (lectura) y Employee's Note (hilo de mensajes).
 - **Payroll**: total por cobrar, pagado este mes, registros agrupados por semana de pago.
-- **Perfil**: idioma (español / inglés), fotos y cambios pendientes de subir, cerrar sesión.
+- **Perfil**: fotos y cambios pendientes de subir, cerrar sesión. La interfaz está solo en inglés.
 - **Funciona sin señal**: fotos, Start/Finish y notas quedan guardados en el teléfono y se
   envían solos al volver la conexión, aunque se cierre la app.
 - Respeta lo que la oficina configura en la web: roles, statuses permitidos, *Field & Button
@@ -56,11 +56,11 @@ primer build si prefieres otro; después ya no se puede cambiar en las tiendas).
 ```
 App.tsx                      Providers + navegación
 src/config/firebase.ts       Mismo proyecto Firebase que la web (bdprecise-2d4bc)
-src/context/                 Sesión, catálogos, casas, red, cola de fotos, cola de cambios, idioma
+src/context/                 Sesión, catálogos, casas, red, cola de fotos, cola de cambios
 src/services/                Escrituras a Firestore/Storage (mismos campos que la web)
 src/screens/                 Login, Mis casas, Detalle, Payroll, Perfil
 src/components/              Piezas de pantalla; src/components/ui/ = sistema de diseño
 src/theme/tokens.ts          Paleta con significado, tipografía, sombras y movimiento
-src/i18n/strings.ts          Textos ES / EN
+src/constants/strings.ts     Textos de la interfaz (inglés)
 ```
 Lee `CLAUDE.md` para el contrato de datos con la web y las convenciones del código.

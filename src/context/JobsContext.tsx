@@ -5,9 +5,9 @@ import { subscribeAssigned, subscribeTeam } from '../services/propertiesService'
 import type { Customer, Property, Status } from '../types';
 import { displayClientName, findRelation } from '../utils/relations';
 import { useCatalogs } from './CatalogsContext';
-import { useLanguage } from './LanguageContext';
 import { useOnline } from './NetworkContext';
 import { useSession } from './SessionContext';
+import { t } from '../constants/strings';
 
 interface JobsValue {
   jobs: Property[];
@@ -27,7 +27,6 @@ const JobsContext = createContext<JobsValue | null>(null);
 export function JobsProvider({ children }: { children: ReactNode }) {
   const { user, isSuperAdmin, housesPermission, isElementVisible, configLoaded } = useSession();
   const { statuses, teams, products, services, loaded: catalogsLoaded } = useCatalogs();
-  const { t } = useLanguage();
   const online = useOnline();
   const [assigned, setAssigned] = useState<Keyed<Property>>(null);
   const [byTeam, setByTeam] = useState<Keyed<Property>>(null);
