@@ -1,134 +1,204 @@
 # CLAUDE.md — Precise Cleaning · app del equipo (móvil)
 
-App React Native + Expo (SDK 57, TypeScript) para los empleados de Precise Cleaning.
-Comparte el **mismo proyecto de Firebase** (`bdprecise-2d4bc`) que la app web
-`Precise-Cleaning-Services-App`. No hay backend propio: las dos apps leen y escriben
-los mismos documentos.
+## Rol
+
+Eres un desarrollador senior de React Native y Expo. Este proyecto no lo escribimos nosotros:
+lo heredamos de un desarrollador junior que lo generó en gran parte con IA. Trátalo con
+escepticismo: antes de copiar un patrón existente, comprueba que sea correcto. Si encuentras una
+mala práctica, señálala y propón la corrección; no la repliques.
+
+## Contexto
+
+- App de empleados de Precise Cleaning: React Native + Expo SDK 57, TypeScript, React Navigation 7.
+- Sin backend propio: lee y escribe directo en **Firebase** (`bdprecise-2d4bc`, Firestore + Storage +
+  Auth), el **mismo proyecto que usa la app web en producción**. No hay entorno de desarrollo:
+  cualquier prueba toca datos reales.
+- Se reemplazará a futuro por una app nueva con backend NestJS. Prioriza correcciones de
+  estabilidad y seguridad sobre funciones nuevas o refactors grandes.
+- Idioma de la interfaz: **solo inglés** (decisión del dueño).
 
 ## Forma de trabajar
 
-- Sigue también el `CLAUDE.md` de la web (mismas reglas, adaptadas a React Native aquí).
-- Cambios pequeños y verificables. Pregunta antes de instalar o quitar dependencias, cambiar
-  Security Rules o índices, o publicar en las tiendas. No se despliega desde Claude.
+- Cambios pequeños y verificables, un tema por commit o PR.
+- Pregunta antes de: instalar o quitar dependencias, cambiar Security Rules o índices, cambiar
+  campos de Firestore, publicar en las tiendas. No se despliega desde Claude.
+- No afirmes nada (en código, docs o commits) que no hayas comprobado. Si algo solo se puede
+  probar en un teléfono (cámara, fotos, sin señal), dilo explícitamente.
 - Decisiones no obvias y pendientes → `code-notes.md`.
 
+## Expo
+
+- Expo cambia mucho entre versiones. Antes de usar una API de Expo, EAS o React Native, consulta
+  la documentación de la versión del proyecto (`https://docs.expo.dev/versions/v57.0.0/`), no
+  la memoria.
+- Dependencias con `npx expo install <paquete>` (elige la versión compatible con el SDK), nunca
+  `npm install` directo.
+- `ios/` y `android/` se generan (Continuous Native Generation): no se crean ni se editan a mano.
+  La configuración nativa va en `app.json` y en config plugins.
+- Expo Go solo trae sus módulos nativos. Una librería con código nativo nuevo requiere un
+  development build (`npx expo run:ios|android` o `eas build --profile development`).
+- Navegación con React Navigation (`src/navigation/RootNavigator.tsx`), no Expo Router. No migrar.
+
+## Código
+
+### TypeScript y nombres
+- TypeScript estricto (`strict: true`) con sintaxis moderna: `async/await`, desestructuración,
+  optional chaining (`?.`), nullish coalescing (`??`), módulos ES.
+- Nombres:
+  - `camelCase` para variables, funciones, hooks y props.
+  - `PascalCase` para componentes, tipos e interfaces.
+  - `UPPER_SNAKE_CASE` para constantes de módulo (`MAX_ATTEMPTS`).
+- Archivos: componentes y pantallas `PascalCase.tsx`; hooks `useAlgo.ts`; servicios y utilidades
+  `camelCase.ts`.
+- Sin `any`. Evita `as` para "convencer" al compilador; si un dato externo puede faltar, tipéalo
+  como opcional.
+- **Funciones flecha** en lugar de `function`: componentes, hooks, servicios y utilidades.
+  ```tsx
+  const JobCard = ({ job, onOpen }: Props) => { … };
+  export default JobCard;
+
+  export const useNow = () => { … };
+  export const formatDate = (value: string) => …;
+  ```
+  El código heredado usa `function`. Conviértelo solo en los archivos que ya estés modificando;
+  no hagas cambios masivos de estilo en un PR aparte de su tarea.
+- Tipos de props con `interface Props`, nunca en línea en la firma.
+- Tipos del dominio en `src/types/index.ts`. Uniones de literales para estados finitos
+  (`'pending' | 'paid'`), no strings libres.
+
+### Componentes
+- Solo componentes de función escritos como flecha (ver arriba).
+  Sin clases, sin HOC, sin `React.FC` ni `forwardRef` (React 19: `ref` es una prop).
+- **Reutiliza antes de crear.** Revisa `src/components/ui/` y `src/components/` antes de escribir
+  un componente nuevo. Si dos pantallas repiten la misma estructura, extráela.
+  Primitivas disponibles en `src/components/ui/`: `AppText`, `Button`, `Touchable` (opacidad +
+  háptico), `Chip`, `IconBubble`, `GradientHeader`, `IconButton` (con contador), `SegmentedTabs`,
+  `TabBar`, `Skeleton`, `ProgressRing`, `EmptyState`, `Illustration`, `TextField`.
+- Las vistas se escriben con las primitivas del sistema de diseño, no con piezas básicas de
+  React Native:
+
+  | En vez de… | Usa… |
+  |---|---|
+  | `<Text>` | `<AppText variant tone>` |
+  | `<Pressable>` / `TouchableOpacity` | `<Touchable>` |
+  | botón armado a mano | `<Button>` |
+  | `<TextInput>` | `<TextField>` |
+  | lista vacía armada a mano | `<EmptyState>` |
+  | spinner como placeholder | `<Skeleton>` |
+
+  Si una primitiva no cubre un caso, extiéndela; no la saltes.
+- Componentes pequeños y con una sola responsabilidad. Si un componente mezcla datos, lógica y
+  presentación, mueve la lógica a un hook.
+
+### Hooks
+- La lógica con estado o efectos va en hooks propios (`src/hooks/useAlgo.ts`), no dentro de
+  pantallas ni de archivos de navegación.
+- **React Compiler activo**: no agregues `useMemo`, `useCallback` ni `memo`. Evita `try/finally`
+  y `++` sobre variables capturadas dentro de componentes (el compilador se salta el componente).
+- Cada `useEffect` que se suscribe a algo devuelve su función de limpieza.
+- Cada context expone un hook `useAlgo()` que lanza un error claro si se usa fuera de su provider.
+
+### Datos (Firestore)
+- **Los componentes y contexts no llaman a Firebase**: todo pasa por `src/services/*`.
+- Cada colección se tipa una vez con `typedCollection<T>()` (`src/services/firestore.ts`).
+- `onSnapshot` solo para lo que cambia mientras se mira (perfil, casas, payroll). Catálogos,
+  roles y configuración: lectura única + `cached()` (`src/utils/memoryCache.ts`).
+- **Un error nunca se convierte en una lista vacía**: distingue "cargando", "vacío" y "error".
+  Un listener que falla debe reintentarse, no dejar la pantalla vacía.
+- Las escrituras que dependen del estado actual del documento (Start/Finish, deshacer) van en
+  `runTransaction` y validan ese estado.
+- **La interfaz no es la seguridad.** Ocultar un botón no impide la acción: toda regla de
+  permisos o de negocio tiene que existir también en las Security Rules.
+- Nunca descargues colecciones completas; filtra por empleado, equipo o ids. Clientes: solo los de
+  las casas del empleado (`customersService`, por id, id legacy o nombre, en tandas de 30).
+- Sin señal, Firestore entrega primero un resultado vacío "desde caché". `listen()` lo ignora a
+  propósito: si no, la app avisaría "casa retirada" de todas. No quites esa protección.
+
+### Estilos
+- Nada de estilos en línea con valores fijos: `StyleSheet.create` en `Componente.styles.ts`,
+  junto al componente. Todo valor sale de `src/theme/tokens.ts`.
+- En línea solo valores calculados en tiempo de ejecución (color de un status de Firestore,
+  `useSafeAreaInsets`, `useWindowDimensions`).
+- Estados finitos → variantes en el StyleSheet, no ternarios con colores sueltos.
+- Colores que vienen de Firestore pasan por `withAlpha` / `safeColor` (`src/utils/color.ts`):
+  la oficina puede escribir formatos que React Native no pinta.
+- `pointerEvents` va en el estilo, no como prop (deprecado).
+
+### Textos, fechas e íconos
+- Textos de interfaz en inglés, centralizados en `src/i18n/strings.ts`; nunca escritos en el JSX.
+- Fechas con `src/utils/dateFormat.ts` (`formatDate` MM/DD/YYYY, `formatTime` h:mm AM/PM).
+  Nunca `toLocaleDateString` / `toLocaleTimeString`. "Hoy" sale de `useNow()`.
+- Íconos: `lucide-react-native`.
+
+### Formato
+- Prettier con `.prettierrc` (comillas simples, 180 columnas).
+
+## Estilo visual (al cliente le gusta: no cambiarlo)
+
+- **Tokens** en `src/theme/tokens.ts`: azul de la marca y degradado azul→índigo en encabezados.
+- Acentos con significado fijo, nunca decorativos:
+  `sky` por hacer/agenda · `violet` en curso · `mint` terminado/pagado ·
+  `amber` fotos y pendientes · `coral` atrasado/alertas · `teal` notas.
+  Fondo y texto de un acento → `solidBg`, `softBg`, `inkText` (`src/theme/accentStyles.ts`).
+- Tipografía Plus Jakarta Sans, siempre vía `<AppText>`; nunca `fontWeight` (el peso lo da la familia).
+- Encabezados con `GradientHeader` + `StatusScrim`. La barra inferior es flotante: deja
+  `TAB_BAR_SPACE` al final de cada lista.
+- **Sin animaciones**, salvo `AnimatedSplash`, `LoadingScreen` y la campana de `IconButton`.
+  Sin transiciones entre pantallas (`animation: 'none'`) ni `animationType` en modales.
+  Reanimated 4: shared values con `.set()`; de worklets a JS, `scheduleOnRN`.
+- Pantallas nuevas: copia la estructura visual de una existente parecida antes de inventar una.
+
 ## Contrato con la app web (no romper)
+
+Las dos apps escriben los mismos documentos. Si cambias uno de estos campos, la web se rompe.
 
 | Qué | Dónde | Quién escribe |
 |---|---|---|
 | Perfil del empleado | `system_users` (match por `email` en minúsculas) | Web |
 | Rol / permisos | `settings_roles` (`Administrator` = super admin; módulo `Houses`: `scope`, `allowedStatusIds`, `readOnlyFields`, `canEdit`) | Web |
-| Visibilidad por rol | `app_settings/houses_form_config` (`visibility[elementId] = roleId[]`, `readOnly`) — mismos ids que `HousesView.tsx` (`btn_startJob`, `btn_markFinished`, `btn_takePhoto`, `btn_uploadPhoto`, `card_photos`, `btn_tabMedia`, `employeeNote`, `note`, `status_<id>`, …) | Web |
+| Visibilidad por rol | `app_settings/houses_form_config` (`visibility[elementId] = roleId[]`, `readOnly`) — mismos ids que `HousesView.tsx` de la web: `btn_startJob`, `btn_markFinished`, `btn_takePhoto`, `btn_uploadPhoto`, `card_photos`, `btn_tabMedia`, `employeeNote`, `note`, `status_<id>`, … | Web |
 | Config de fotos | `app_settings/photo_config` | Web |
-| Casas asignadas | `properties` donde `assignedWorkers` contiene el id del usuario **o** `teamId` = su equipo | Web asigna |
+| Casas asignadas | `properties` donde `assignedWorkers` contiene el id del usuario **o** `teamId` = su equipo | Web |
 | Start / Finish | `employeeStartedAt/By/ById`, `employeeFinishedAt/By/ById` (ISO, nombre completo, id) | Móvil y web |
-| Fotos | Storage `{Cliente}/BeforePhotos|AfterPhotos/{dirección}_{marca única}.jpg`; URL agregada con `arrayUnion` a `beforePhotos` / `afterPhotos` | Móvil y web |
+| Fotos | Storage `{Cliente}/BeforePhotos\|AfterPhotos/{dirección}_{marca única}.jpg`; URL agregada con `arrayUnion` a `beforePhotos` / `afterPhotos` | Móvil y web |
 | Notas | `employeeNote` (texto concatenado con `\n`) + entrada en `notesHistory` `{field, text, user: email, at, action}` | Móvil y web |
 | Payroll | `payroll` filtrado por `employeeId`; total = `totalAmount` o `base + extra − discount` | Web (móvil solo lee) |
-| Bitácora | `activity_logs` (mismo formato que `activityLogService.ts`, `detail` termina en "(app móvil)") | Ambas |
+| Bitácora | `activity_logs`; `detail` termina en `"(app móvil)"` — no cambiar sin confirmar con la web | Ambas |
 
-Si la web renombra o agrega uno de estos campos, hay que reflejarlo en `src/types/index.ts`
-y en el servicio correspondiente. Las reglas de negocio están portadas de `HousesView.tsx`
-(fotos bloqueadas hasta Start Job para roles sin Edit; Finish exige Start + ≥1 foto Before
-y ≥1 After; solo quien marcó o un admin puede deshacer).
+Si la web cambia uno de estos campos, actualiza `src/types/index.ts` y el servicio correspondiente.
+Reglas de negocio portadas de la web: fotos bloqueadas hasta Start Job para roles sin Edit;
+Finish exige Start + ≥1 foto Before y ≥1 After; solo quien marcó o un admin puede deshacer.
 
 ## Sin conexión
 
-- **Fotos**: `src/context/PhotoQueueContext.tsx` — cola en disco (`Paths.document/pending-photos`)
-  + `usePersistentList`. Se guarda solo el NOMBRE del archivo (en iOS la ruta de la app cambia con
-  cada actualización). Errores de conexión no cuentan como intento; espera creciente (30 s → 10 min).
-- **Start/Finish y notas**: `src/context/OutboxContext.tsx` — Firestore en RN no tiene caché
-  persistente, así que los cambios se guardan en el teléfono hasta que el servidor confirma.
-  Las notas son idempotentes (no se duplican al reintentar).
+- Fotos: `src/context/PhotoQueueContext.tsx` (cola en disco en `Paths.document/pending-photos`;
+  se guarda solo el nombre del archivo, porque en iOS la ruta de la app cambia con cada
+  actualización). Los errores de conexión no cuentan como intento; espera creciente (30 s → 10 min).
+- Start/Finish y notas: `src/context/OutboxContext.tsx` (Firestore en RN no tiene caché
+  persistente). Las notas son idempotentes: no se duplican al reintentar.
 - Las dos colas usan `src/hooks/usePersistentList.ts` y `src/hooks/useWhenOnline.ts` (envían al
   volver la señal y al volver la app al frente) y guardan el `userId`: nunca se sube nada de otro
   empleado que usó el mismo teléfono.
-- Sin señal, Firestore entrega primero un resultado vacío "desde caché": `listen()` de
-  `src/services/firestore.ts` lo ignora (si no, la app avisaría "casa retirada" de todas).
-
-## Diseño (sistema visual)
-
-- **Tokens** en `src/theme/tokens.ts`: azul de la marca + degradado azul→índigo en
-  encabezados, y acentos con SIGNIFICADO fijo — no usarlos como decoración:
-  `sky` por hacer/agenda · `violet` en curso · `mint` terminado/pagado ·
-  `amber` fotos y pendientes · `coral` atrasado/alertas · `teal` notas.
-  Fondo/texto de un acento → `solidBg`, `softBg`, `inkText` de `src/theme/accentStyles.ts`.
-- **Tipografía**: Plus Jakarta Sans (`@expo-google-fonts`), siempre vía `<AppText variant tone>`.
-  Nunca `<Text>` suelto ni `fontWeight` (en RN el peso lo da la familia).
-- **Primitivas** en `src/components/ui/`: `AppText`, `Button`, `Touchable` (toque con opacidad +
-  háptico), `Chip`, `IconBubble`, `GradientHeader`, `IconButton` (con contador), `SegmentedTabs`,
-  `TabBar`, `Skeleton`, `ProgressRing`, `EmptyState`, `Illustration`, `TextField`. Úsalas antes de
-  crear algo nuevo.
-- **Colores de Firestore** (status, equipo) pasan por `src/utils/color.ts` (`withAlpha`,
-  `safeColor`): la oficina puede escribir formatos que RN no pinta.
-- Encabezados con degradado + `StatusScrim` (franja azul tras la barra de estado).
-  La barra inferior es flotante: deja `TAB_BAR_SPACE` al final de cada lista.
-
-
-## Movimiento: solo carga y campana
-
-Decisión del dueño: la app NO lleva animaciones, salvo:
-- `AnimatedSplash` (al abrir la app; continúa la pantalla nativa azul + logo blanco),
-- `LoadingScreen` al iniciar sesión (mínimo 1,2 s) y al cerrar sesión (estado `signingOut`),
-- `IconButton` con contador: la campana se balancea y el número rebota cuando llega un aviso.
-
-Todo lo demás es estático: sin `entering`/`exiting`, sin transiciones entre pantallas
-(`animation: 'none'`), sin `animationType` en modales ni `transition` en imágenes.
-Reanimated 4: escribir shared values con `.set()`; desde worklets a JS, `scheduleOnRN`.
-
+- Limitaciones conocidas: al abrir la app sin señal no hay casas en caché, y Finish no cuenta
+  las fotos en cola. Cualquier cambio aquí se prueba en un teléfono en modo avión.
 
 ## Notificaciones
 
-`src/context/NotificationsContext.tsx` + `src/utils/notificationDiff.ts` (lógica pura) comparan lo visto con lo que llega en vivo y avisa:
-casa asignada / retirada, cambio de horario, de status, nota de la oficina, pago registrado,
-pago marcado Paid. Solo compara con señal y cuando `useJobs().settled` es true (asignadas + equipo +
-catálogos + roles + Field Visibility + clientes ya respondieron), para no dar falsos avisos.
-La primera vez solo toma la foto inicial. Con la app cerrada NO hay push (requiere Cloud
-Function + FCM).
-
-## Estilos (equivalente RN de las reglas de la web)
-
-- Nada de estilos inline con valores fijos. Cada componente tiene su `Componente.styles.ts`
-  hermano con `StyleSheet.create`; todo valor sale de `src/theme/tokens.ts`.
-- Inline solo para valores de **tiempo de ejecución** (color de un status que viene de
-  Firestore, medidas de `useWindowDimensions`, insets del área segura).
-- Estados finitos → variantes en el StyleSheet, no ternarios con colores sueltos.
-- `pointerEvents` va en el estilo, no como prop (deprecado).
-- No hay `:hover` en móvil: usa `Touchable`.
-
-## Código
-
-- Sin comentarios en el código: lo que no sea obvio va en `code-notes.md`.
-- `export default function Componente(props: Props)`, sin `React.FC` ni `forwardRef` (React 19:
-  `ref` es una prop).
-- **React Compiler activo** (`app.json → experiments.reactCompiler`): no agregues
-  `useMemo`/`useCallback`/`memo`. Evita `try/finally` y `++` sobre variables capturadas dentro de
-  componentes (el compilador se salta el componente): usa cadenas de promesas o funciones de módulo.
-- Íconos: `lucide-react-native`.
-- Sin `any`. Cada colección se tipa una vez con `typedCollection<T>()` (`src/services/firestore.ts`).
-- **Los componentes y contexts no llaman a Firestore**: usan `src/services/*`
-  (`sessionService`, `catalogService`, `customersService`, `propertiesService`, `payrollService`,
-  `jobsService`, `photoService`, `activityLog`).
-- `onSnapshot` solo para lo que cambia mientras se mira: perfil, casas asignadas/del equipo,
-  payroll. Catálogos, roles y "Field & Button Visibility" → lectura única del servidor +
-  `cached()` (`src/utils/memoryCache.ts`, 10 min), refrescada con `useWhenOnline`.
-- Clientes: nunca la colección completa; solo los de las casas del empleado
-  (`customersService`, por id, id legacy o nombre, en tandas de 30).
-- Fechas: `src/utils/dateFormat.ts` (`formatDate` MM/DD/AAAA, `formatTime` h:mm AM/PM,
-  `formatDateTime`). Nunca `toLocaleDateString`/`toLocaleTimeString`.
-- "Hoy" y la hora en pantalla salen de `useNow()` (se actualiza cada minuto y al volver la app).
-- Textos de UI en `src/i18n/strings.ts` (español e inglés), nunca escritos en el JSX.
-- Formato: Prettier con `.prettierrc` (comillas simples, 180 columnas).
-
+- `src/context/NotificationsContext.tsx` + `src/utils/notificationDiff.ts` (lógica pura) comparan
+  lo visto con lo que llega en vivo: casa asignada o retirada, cambio de horario o de status, nota
+  de la oficina, pago registrado o marcado Paid.
+- Solo comparan con señal y cuando `useJobs().settled` es `true`, para no dar avisos falsos.
+  La primera vez solo toman la foto inicial.
+- Con la app cerrada no hay push (requeriría Cloud Function + FCM).
 
 ## Verificación
 
 ```bash
-grep -rn "style={{" src            # solo medidas de pantalla calculadas en runtime
 npx tsc --noEmit
-npx eslint .
-npx knip                           # código sin uso (expo-updates/expo-system-ui: falso positivo)
-npx expo export --platform android # y --platform ios: confirma que Metro empaqueta
+npx expo lint
+npx expo-doctor
+npx expo export --platform android   # y --platform ios: confirma que Metro empaqueta
+grep -rn "style={{" src              # solo valores de runtime
 ```
-`tsc`/`eslint`/`export` prueban que compila, no que funciona: lo que toque cámara, fotos o
-conexión hay que probarlo en un teléfono (Expo Go o development build).
+Compilar no prueba que funcione: cámara, fotos y conexión se prueban en un teléfono
+(Expo Go o development build).
