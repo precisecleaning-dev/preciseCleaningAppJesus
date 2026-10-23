@@ -1,10 +1,7 @@
 import { StyleSheet } from 'react-native';
-import { accents, colors, radius, shadow, space } from '../theme/tokens';
+import { accents, colors, space } from '../theme/tokens';
 
 export const styles = StyleSheet.create({
-    card: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: radius.lg, ...shadow.card },
-    stripe: { width: 6, borderTopLeftRadius: radius.lg, borderBottomLeftRadius: radius.lg },
-    body: { flex: 1, padding: space.md, gap: space.sm },
     top: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
     titles: { flex: 1, gap: 2, minWidth: 0 },
     line: { flexDirection: 'row', alignItems: 'center', gap: 4 },

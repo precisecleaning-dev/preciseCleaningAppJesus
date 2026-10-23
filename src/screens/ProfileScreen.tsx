@@ -5,6 +5,7 @@ import { ScrollView, View } from 'react-native';
 import StatusScrim from '../components/StatusScrim';
 import AppText from '../components/ui/AppText';
 import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
 import Chip from '../components/ui/Chip';
 import GradientHeader from '../components/ui/GradientHeader';
 import IconBubble from '../components/ui/IconBubble';
@@ -77,15 +78,15 @@ export default function ProfileScreen() {
                     </View>
                 </GradientHeader>
 
-                <View style={[styles.card, styles.statsCard]}>
+                <Card isRaised style={[styles.card, styles.statsCard]}>
                     <Stat icon={House} accent="sky" value={jobs.length} label={t.statJobs} />
                     <View style={styles.vr} />
                     <Stat icon={CircleCheckBig} accent="mint" value={done} label={t.statDone} />
                     <View style={styles.vr} />
                     <Stat icon={Camera} accent="amber" value={photos} label={t.statPhotosUp} />
-                </View>
+                </Card>
 
-                <View style={styles.card}>
+                <Card style={styles.card}>
                     <View style={styles.cardHead}>
                         <IconBubble icon={synced ? CloudCheck : CloudUpload} accent={synced ? 'mint' : 'amber'} size="sm" />
                         <AppText variant="title">{t.sync}</AppText>
@@ -113,7 +114,7 @@ export default function ProfileScreen() {
                             )}
                         </View>
                     )}
-                </View>
+                </Card>
 
                 <View style={styles.signOut}>
                     <Button variant="outline" label={t.signOut} onPress={signOut} icon={<LogOut size={18} color={colors.primary} />} />

@@ -83,7 +83,8 @@ mala práctica, señálala y propón la corrección; no la repliques.
     no hagas cambios masivos de estilo en un PR aparte de su tarea.
 
 - Tipos de props con `interface Props`, nunca en línea en la firma.
-- Tipos del dominio en `src/types/index.ts`. Uniones de literales para estados finitos
+- Tipos del dominio en `src/types/index.ts`; los de un módulo grande en su propio archivo
+  (`src/types/tasks.ts`). Uniones de literales para estados finitos
   (`'pending' | 'paid'`), no strings libres.
 
 ### Componentes
@@ -93,8 +94,18 @@ mala práctica, señálala y propón la corrección; no la repliques.
 - **Reutiliza antes de crear.** Revisa `src/components/ui/` y `src/components/` antes de escribir
   un componente nuevo. Si dos pantallas repiten la misma estructura, extráela.
   Primitivas disponibles en `src/components/ui/`: `AppText`, `Button`, `Touchable` (opacidad +
-  háptico), `Chip`, `IconBubble`, `GradientHeader`, `IconButton` (con contador), `SegmentedTabs`,
-  `TabBar`, `Skeleton`, `ProgressRing`, `EmptyState`, `Illustration`, `TextField`.
+  háptico), `Chip`, `SelectableChip`, `IconBubble`, `GradientHeader`, `IconButton` (con contador),
+  `GlassPillButton` (botón translúcido sobre el degradado), `SegmentedTabs` (`scrollable` si no
+  caben), `TabBar`, `Card`, `InfoRow`, `FormSection`, `StripeCard` (tarjeta de lista con franja de color), `BottomActionBar`,
+  `FieldButton` (campo que abre un selector), `TextField`, `Skeleton` (`JobCardSkeleton`,
+  `CardSkeletonList`), `ProgressRing`, `EmptyState`, `Illustration`. En `src/components/`:
+  `OptionPicker` (lista con búsqueda, selección simple o múltiple), `DueDateField` (con o sin hora),
+  `TaskStateView` (estados de tareas y proyectos), `TaskCard`, `ProjectCard`, `ProjectsList`,
+  `MessageThread` (hilo de mensajes con campo para escribir: notas de casas y comentarios de tareas),
+  `AttachmentsSection` (ver, subir y quitar adjuntos; hook `useAttachments`, servicio genérico
+  `attachmentsService`; solo tareas: los proyectos no llevan adjuntos). Toda subida a Storage pasa por
+  `src/services/storageService.ts`.
+  Hook `useKeyboardVisible` para ocultar barras fijas mientras se escribe.
 - Las vistas se escriben con las primitivas del sistema de diseño, no con piezas básicas de
   React Native:
 
@@ -106,6 +117,8 @@ mala práctica, señálala y propón la corrección; no la repliques.
     | `<TextInput>`                      | `<TextField>`            |
     | lista vacía armada a mano          | `<EmptyState>`           |
     | spinner como placeholder           | `<Skeleton>`             |
+    | `View` con fondo blanco y sombra   | `<Card>`                 |
+    | barra fija de botones abajo        | `<BottomActionBar>`      |
 
     Si una primitiva no cubre un caso, extiéndela; no la saltes.
 
@@ -125,8 +138,14 @@ mala práctica, señálala y propón la corrección; no la repliques.
 
 - **Los componentes y contexts no llaman a Firebase**: todo pasa por `src/services/*`.
 - Cada colección se tipa una vez con `typedCollection<T>()` (`src/services/firestore.ts`).
-- `onSnapshot` solo para lo que cambia mientras se mira (perfil, casas, payroll). Catálogos,
-  roles y configuración: lectura única + `cached()` (`src/utils/memoryCache.ts`).
+- `onSnapshot` solo para lo que cambia mientras se mira (perfil, **rol del usuario**, casas,
+  tareas, payroll). Catálogos y configuración: lectura única + `cached()` (`src/utils/memoryCache.ts`).
+- **Permisos:** salen siempre de `settings_roles`. Se escucha en vivo **solo el rol del usuario**
+  (`settings_roles/{system_users.roleId}`, `subscribeRole` en `sessionService`), nunca la colección
+  completa. Única excepción: la lista de personas asignables de Tasks (`assignableUsersService`,
+  solo para quien puede asignar), que necesita saber qué roles ven el Task list. `Administrator` (por nombre) = super admin. **Fallar cerrado:** sin rol (ni del
+  servidor ni guardado en el teléfono) la app no entra (`BlockedScreen` "noRole" / "roleError");
+  nunca se supone un rol vacío con todo permitido.
 - **Un error nunca se convierte en una lista vacía**: distingue "cargando", "vacío" y "error".
   Un listener que falla debe reintentarse, no dejar la pantalla vacía.
 - Las escrituras que dependen del estado actual del documento (Start/Finish, deshacer) van en
@@ -181,6 +200,11 @@ mala práctica, señálala y propón la corrección; no la repliques.
 ## Contrato con la app web (no romper)
 
 Las dos apps escriben los mismos documentos. Si cambias uno de estos campos, la web se rompe.
+
+**Tareas y Proyectos** (`user_tasks`, `task_projects`, `app_settings/task_list_tabs`) tienen su propio
+contrato: lee **`tasks-contract.md`** completo antes de tocar ese módulo. Sus permisos salen de
+`settings_roles` (módulo `Task List`) con `taskListPermissionsOf()`, como el resto de la app; la
+colección `user_access` que proponía la web no existe y no se usa.
 
 | Qué                 | Dónde                                                                                                                                                                                                                                                                           | Quién escribe        |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |

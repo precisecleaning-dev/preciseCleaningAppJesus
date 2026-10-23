@@ -1,37 +1,54 @@
-import { Mail, ShieldAlert, UserX } from 'lucide-react-native';
-import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { Mail, RefreshCw, ShieldAlert, ShieldOff, UserX, type LucideIcon } from 'lucide-react-native';
+import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppText from '../components/ui/AppText';
 import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
-import { useSession } from '../context/SessionContext';
-import { gradients } from '../theme/tokens';
-import { styles } from './BlockedScreen.styles';
 import { t } from '../constants/strings';
+import { useSession } from '../context/SessionContext';
+import { colors, gradients } from '../theme/tokens';
+import { styles } from './BlockedScreen.styles';
 
-export default function BlockedScreen({ reason }: { reason: 'noProfile' | 'inactive' }) {
-    const { signOut, authUser } = useSession();
+type BlockedReason = 'noProfile' | 'inactive' | 'noRole' | 'roleError';
+
+interface Props {
+    reason: BlockedReason;
+}
+
+const CONTENT: Record<BlockedReason, { icon: LucideIcon; title: string; body: string }> = {
+    noProfile: { icon: UserX, title: t.noProfileTitle, body: t.noProfileBody },
+    inactive: { icon: UserX, title: t.noProfileTitle, body: t.inactiveBody },
+    noRole: { icon: ShieldOff, title: t.noRoleTitle, body: t.noRoleBody },
+    roleError: { icon: ShieldAlert, title: t.roleErrorTitle, body: t.roleErrorBody },
+};
+
+const BlockedScreen = ({ reason }: Props) => {
+    const { signOut, authUser, retryRole } = useSession();
+    const content = CONTENT[reason];
     return (
         <SafeAreaView style={styles.screen}>
             <StatusBar style="dark" />
             <EmptyState
-                icon={UserX}
+                icon={content.icon}
                 gradient={gradients.amber}
                 orbits={[
                     { icon: ShieldAlert, accent: 'coral' },
                     { icon: Mail, accent: 'sky' },
                     { icon: UserX, accent: 'violet' },
                 ]}
-                title={t.noProfileTitle}
-                body={reason === 'inactive' ? t.inactiveBody : t.noProfileBody}
+                title={content.title}
+                body={content.body}
             />
             <AppText variant="small" tone="muted" center>
                 {authUser?.email}
             </AppText>
             <View style={styles.action}>
+                {reason === 'roleError' && <Button variant="soft" label={t.tryAgain} onPress={retryRole} icon={<RefreshCw size={18} color={colors.primaryDark} />} />}
                 <Button variant="outline" label={t.signOut} onPress={signOut} />
             </View>
         </SafeAreaView>
     );
-}
+};
+
+export default BlockedScreen;

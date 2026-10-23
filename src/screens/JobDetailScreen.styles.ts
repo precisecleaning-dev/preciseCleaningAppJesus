@@ -1,25 +1,13 @@
 import { StyleSheet } from 'react-native';
-import { accents, colors, radius, shadow, space } from '../theme/tokens';
+import { accents, colors, radius, space } from '../theme/tokens';
 
 export const styles = StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.bg },
     flex: { flex: 1 },
     content: { paddingHorizontal: space.md, gap: space.md },
     headChips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, alignItems: 'center' },
-    mapsBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        backgroundColor: colors.glass,
-        borderWidth: 1,
-        borderColor: colors.glassBorder,
-        borderRadius: 999,
-        paddingHorizontal: space.sm,
-        paddingVertical: 5,
-        marginLeft: 'auto',
-    },
-    card: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: space.lg, ...shadow.card },
-    progressCard: { marginTop: -50, gap: space.md, ...shadow.raised },
+    mapsSlot: { marginLeft: 'auto' },
+    progressCard: { marginTop: -50, gap: space.md },
     logs: { gap: 2, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: space.sm },
     gapLg: { gap: space.md },
     cardTitle: { marginBottom: space.sm },
@@ -36,18 +24,5 @@ export const styles = StyleSheet.create({
         padding: space.md,
         borderWidth: 1,
         borderColor: accents.mint.solid,
-    },
-    actionBar: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: colors.surface,
-        paddingHorizontal: space.lg,
-        paddingTop: space.md,
-        gap: space.xs,
-        borderTopLeftRadius: radius.xl,
-        borderTopRightRadius: radius.xl,
-        ...shadow.raised,
     },
 });

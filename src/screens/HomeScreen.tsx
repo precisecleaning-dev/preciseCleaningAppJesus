@@ -13,7 +13,7 @@ import EmptyState from '../components/ui/EmptyState';
 import GradientHeader from '../components/ui/GradientHeader';
 import IconButton from '../components/ui/IconButton';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
-import { JobCardSkeleton } from '../components/ui/Skeleton';
+import { CardSkeletonList, JobCardSkeleton } from '../components/ui/Skeleton';
 import { useJobs } from '../context/JobsContext';
 import { useNotifications } from '../context/NotificationsContext';
 import { usePhotoQueue } from '../context/PhotoQueueContext';
@@ -137,11 +137,7 @@ export default function HomeScreen({ navigation }: Props) {
                             body={empty.body}
                         />
                     ) : (
-                        <View style={styles.skeletons}>
-                            <JobCardSkeleton />
-                            <JobCardSkeleton />
-                            <JobCardSkeleton />
-                        </View>
+                        <CardSkeletonList count={3} style={styles.skeletons} />
                     )
                 }
                 initialNumToRender={8}

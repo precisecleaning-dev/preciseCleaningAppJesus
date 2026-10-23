@@ -23,6 +23,6 @@ export const styles = StyleSheet.create({
         fontSize: 15,
         color: colors.text,
     },
-    sendBtn: { width: touchMin, height: touchMin, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+    sendButton: { width: touchMin, height: touchMin, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
     sendDisabled: { opacity: 0.45 },
 });

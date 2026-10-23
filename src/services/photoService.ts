@@ -1,10 +1,10 @@
 import { arrayUnion, doc, updateDoc } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { File } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
-import { db, storage } from '../config/firebase';
+import { db } from '../config/firebase';
 import type { PhotoConfig, PhotoKind } from '../types';
+import { uploadToStorage } from './storageService';
 
 const sanitizeForPath = (str: string): string =>
     (str || '')
@@ -87,37 +87,6 @@ export async function compressPhoto(photo: PickedPhoto, cfg: PhotoConfig): Promi
     }
 }
 
-const STALL_MS = 45_000;
-
-async function uploadFile(localUri: string, storagePath: string, onProgress: (pct: number) => void): Promise<string> {
-    const blob = await (await fetch(localUri)).blob();
-    const task = uploadBytesResumable(ref(storage, storagePath), blob, { contentType: 'image/jpeg', cacheControl: 'public, max-age=31536000' });
-    let lastBytes = -1;
-    let lastChange = Date.now();
-    const watchdog = setInterval(() => {
-        if (Date.now() - lastChange > STALL_MS) task.cancel();
-    }, 5_000);
-    try {
-        await new Promise<void>((resolve, reject) => {
-            task.on(
-                'state_changed',
-                (s) => {
-                    if (s.bytesTransferred !== lastBytes) {
-                        lastBytes = s.bytesTransferred;
-                        lastChange = Date.now();
-                    }
-                    onProgress(s.totalBytes ? s.bytesTransferred / s.totalBytes : 0);
-                },
-                reject,
-                () => resolve(),
-            );
-        });
-    } finally {
-        clearInterval(watchdog);
-    }
-    return getDownloadURL(task.snapshot.ref);
-}
-
 interface UploadInput {
     propertyId: string;
     clientName: string;
@@ -127,7 +96,7 @@ interface UploadInput {
 }
 
 export async function uploadPhoto(input: UploadInput, onProgress: (pct: number) => void): Promise<void> {
-    const url = await uploadFile(input.fileUri, storagePathFor(input.clientName, input.address, input.kind), onProgress);
+    const url = await uploadToStorage(input.fileUri, storagePathFor(input.clientName, input.address, input.kind), { contentType: 'image/jpeg', onProgress });
     await updateDoc(doc(db, 'properties', input.propertyId), { [input.kind === 'before' ? 'beforePhotos' : 'afterPhotos']: arrayUnion(url) });
 }
 

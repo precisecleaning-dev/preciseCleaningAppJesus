@@ -23,6 +23,10 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import PayrollScreen from '../screens/PayrollScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import ProjectDetailScreen from '../screens/ProjectDetailScreen';
+import ProjectFormScreen from '../screens/ProjectFormScreen';
+import TaskDetailScreen from '../screens/TaskDetailScreen';
+import TaskFormScreen from '../screens/TaskFormScreen';
 import TasksScreen from '../screens/TasksScreen';
 import { colors } from '../theme/tokens';
 import { navigationRef } from './navigationRef';
@@ -72,7 +76,7 @@ export default function RootNavigator({ onboarded, finishOnboarding }: { onboard
     if (state === 'signingOut') return <LoadingScreen label={t.signingOut} />;
     if (state === 'checking' || state === 'loadingProfile' || onboarded === null) return <LoadingScreen label={t.loadingSession} />;
     if (state === 'signedOut') return onboarded ? <LoginScreen /> : <OnboardingScreen onFinish={finishOnboarding} />;
-    if (state === 'noProfile' || state === 'inactive') return <BlockedScreen reason={state} />;
+    if (state === 'noProfile' || state === 'inactive' || state === 'noRole' || state === 'roleError') return <BlockedScreen reason={state} />;
 
     return (
         <CatalogsProvider>
@@ -86,6 +90,10 @@ export default function RootNavigator({ onboarded, finishOnboarding }: { onboard
                                         <Stack.Screen name="Tabs" component={MainTabs} />
                                         <Stack.Screen name="JobDetail" component={JobDetailScreen} />
                                         <Stack.Screen name="Notifications" component={NotificationsScreen} />
+                                        <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
+                                        <Stack.Screen name="TaskForm" component={TaskFormScreen} />
+                                        <Stack.Screen name="ProjectDetail" component={ProjectDetailScreen} />
+                                        <Stack.Screen name="ProjectForm" component={ProjectFormScreen} />
                                     </Stack.Navigator>
                                 </NavigationContainer>
                                 <OfflineBanner />

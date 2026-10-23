@@ -15,8 +15,7 @@ import {
     Users,
     type LucideIcon,
 } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
-import { Alert, Keyboard, KeyboardAvoidingView, Linking, Platform, ScrollView, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Linking, Platform, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import NoteThread from '../components/NoteThread';
 import PhotoSection from '../components/PhotoSection';
@@ -24,11 +23,13 @@ import ScreenTopBar from '../components/ScreenTopBar';
 import StatusScrim from '../components/StatusScrim';
 import WorkProgress from '../components/WorkProgress';
 import AppText from '../components/ui/AppText';
+import BottomActionBar from '../components/ui/BottomActionBar';
 import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import GlassPillButton from '../components/ui/GlassPillButton';
 import Chip from '../components/ui/Chip';
 import EmptyState from '../components/ui/EmptyState';
 import IconBubble from '../components/ui/IconBubble';
-import Touchable from '../components/ui/Touchable';
 import { useCatalogs } from '../context/CatalogsContext';
 import { useJobs } from '../context/JobsContext';
 import { useOutbox } from '../context/OutboxContext';
@@ -41,17 +42,11 @@ import { formatDate, formatDateTime } from '../utils/dateFormat';
 import { jobVisual } from '../utils/jobVisual';
 import { findRelation } from '../utils/relations';
 import { styles } from './JobDetailScreen.styles';
+import { confirmAction } from '../utils/confirm';
+import { useKeyboardVisible } from '../hooks/useKeyboardVisible';
 import { fmt, t } from '../constants/strings';
 
 type Props = NativeStackScreenProps<RootStackParams, 'JobDetail'>;
-
-const confirm = (title: string, message: string, okLabel: string, cancelLabel: string) =>
-    new Promise<boolean>((resolve) =>
-        Alert.alert(title, message, [
-            { text: cancelLabel, style: 'cancel', onPress: () => resolve(false) },
-            { text: okLabel, onPress: () => resolve(true) },
-        ]),
-    );
 
 export default function JobDetailScreen({ route, navigation }: Props) {
     const insets = useSafeAreaInsets();
@@ -61,15 +56,7 @@ export default function JobDetailScreen({ route, navigation }: Props) {
     const { teams, priorities } = useCatalogs();
     const { pendingFor } = usePhotoQueue();
     const { mark, addNote, pendingNotes } = useOutbox();
-    const [keyboardOpen, setKeyboardOpen] = useState(false);
-    useEffect(() => {
-        const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardOpen(true));
-        const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardOpen(false));
-        return () => {
-            show.remove();
-            hide.remove();
-        };
-    }, []);
+    const keyboardOpen = useKeyboardVisible();
 
     const job = getJob(route.params.jobId);
 
@@ -107,21 +94,21 @@ export default function JobDetailScreen({ route, navigation }: Props) {
     const onStart = async () => {
         if (started) {
             if (!canUndoMark(job.employeeStartedById, job.employeeStartedBy, user, isSuperAdmin)) return Alert.alert(t.undoStart, t.onlyOwnerCanUndo);
-            if (await confirm(t.undoStart, t.confirmUndoStart, t.confirm, t.cancel)) mark(job, 'undoStart', label);
+            if (await confirmAction(t.undoStart, t.confirmUndoStart, t.confirm, t.cancel)) mark(job, 'undoStart', label);
             return;
         }
-        if (await confirm(t.startJob, t.confirmStart, t.startJob, t.cancel)) mark(job, 'start', label);
+        if (await confirmAction(t.startJob, t.confirmStart, t.startJob, t.cancel)) mark(job, 'start', label);
     };
 
     const onFinish = async () => {
         if (finished) {
             if (!canUndoMark(job.employeeFinishedById, job.employeeFinishedBy, user, isSuperAdmin)) return Alert.alert(t.undoFinish, t.onlyOwnerCanUndo);
-            if (await confirm(t.undoFinish, t.confirmUndoFinish, t.confirm, t.cancel)) mark(job, 'undoFinish', label);
+            if (await confirmAction(t.undoFinish, t.confirmUndoFinish, t.confirm, t.cancel)) mark(job, 'undoFinish', label);
             return;
         }
         if (!started) return Alert.alert(t.finishJob, t.startFirst);
         if (missing.length > 0) return Alert.alert(t.finishJob, fmt(t.missingPhotos, { list: missing.join(' / ') }));
-        if (await confirm(t.finishJob, t.confirmFinish, t.finishJob, t.cancel)) mark(job, 'finish', label);
+        if (await confirmAction(t.finishJob, t.confirmFinish, t.finishJob, t.cancel)) mark(job, 'finish', label);
     };
 
     const openMaps = () => {
@@ -161,16 +148,13 @@ export default function JobDetailScreen({ route, navigation }: Props) {
                         <View style={styles.headChips}>
                             {isElementVisible('statusId') && status && <Chip label={status.name} color={status.color} onDark />}
                             <Chip label={v.label} accent={v.accent} solid />
-                            <Touchable onPress={openMaps} style={styles.mapsBtn} accessibilityRole="link" accessibilityLabel={t.openMaps}>
-                                <Navigation size={15} color={colors.white} />
-                                <AppText variant="caption" tone="inverse">
-                                    {t.openMaps}
-                                </AppText>
-                            </Touchable>
+                            <View style={styles.mapsSlot}>
+                                <GlassPillButton label={t.openMaps} icon={Navigation} size="sm" accessibilityRole="link" onPress={openMaps} />
+                            </View>
                         </View>
                     </ScreenTopBar>
                     <View style={styles.content}>
-                        <View style={[styles.card, styles.progressCard]}>
+                        <Card isRaised style={styles.progressCard}>
                             <WorkProgress started={started} photosOk={missing.length === 0} finished={finished} />
                             {(started || finished) && (
                                 <View style={styles.logs}>
@@ -186,7 +170,7 @@ export default function JobDetailScreen({ route, navigation }: Props) {
                                     )}
                                 </View>
                             )}
-                        </View>
+                        </Card>
 
                         {finished && (
                             <View style={styles.doneBanner}>
@@ -203,7 +187,7 @@ export default function JobDetailScreen({ route, navigation }: Props) {
                         )}
 
                         {showPhotos && (
-                            <View style={[styles.card, styles.gapLg]}>
+                            <Card style={styles.gapLg}>
                                 <AppText variant="h2">{t.photos}</AppText>
                                 {!photosUnlocked && (
                                     <View style={styles.lock}>
@@ -216,11 +200,11 @@ export default function JobDetailScreen({ route, navigation }: Props) {
                                 <PhotoSection kind="before" urls={job.beforePhotos || []} canAdd={photosUnlocked} {...photoProps} />
                                 <View style={styles.divider} />
                                 <PhotoSection kind="after" urls={job.afterPhotos || []} canAdd={photosUnlocked} {...photoProps} />
-                            </View>
+                            </Card>
                         )}
 
                         {tiles.length > 0 && (
-                            <View style={styles.card}>
+                            <Card>
                                 <AppText variant="h2" style={styles.cardTitle}>
                                     {t.details}
                                 </AppText>
@@ -239,11 +223,11 @@ export default function JobDetailScreen({ route, navigation }: Props) {
                                         </View>
                                     ))}
                                 </View>
-                            </View>
+                            </Card>
                         )}
 
                         {(isElementVisible('note') || isElementVisible('employeeNote')) && (
-                            <View style={[styles.card, styles.gapLg]}>
+                            <Card style={styles.gapLg}>
                                 {isElementVisible('note') && (
                                     <NoteThread
                                         title={t.generalNote}
@@ -266,14 +250,14 @@ export default function JobDetailScreen({ route, navigation }: Props) {
                                         onSend={(text) => addNote(job.id, text, label)}
                                     />
                                 )}
-                            </View>
+                            </Card>
                         )}
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
 
             {(showStart || showFinish) && !keyboardOpen && (
-                <View style={[styles.actionBar, { paddingBottom: Math.max(insets.bottom, 14) }]}>
+                <BottomActionBar>
                     {!started && !finished && showStart && <Button label={t.startJob} size="lg" onPress={onStart} icon={<CirclePlay size={22} color={colors.white} />} />}
                     {started && !finished && (
                         <>
@@ -297,7 +281,7 @@ export default function JobDetailScreen({ route, navigation }: Props) {
                         </>
                     )}
                     {finished && showFinish && <Button label={t.undoFinish} size="sm" variant="ghost" onPress={onFinish} icon={<RotateCcw size={16} color={colors.primary} />} />}
-                </View>
+                </BottomActionBar>
             )}
         </View>
     );

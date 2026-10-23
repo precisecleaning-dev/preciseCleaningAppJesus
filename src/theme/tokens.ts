@@ -54,6 +54,16 @@ export const colors = {
     onBrandDot: 'rgba(255, 255, 255, 0.85)',
 };
 
+export const projectColors = {
+    blue: '#1570EF',
+    green: '#10B981',
+    amber: '#F59E0B',
+    purple: '#8B5CF6',
+    pink: '#EC4899',
+    teal: '#14B8A6',
+    olive: '#7C8B2E',
+} as const;
+
 export const gradients = {
     brand: ['#1570EF', '#4F46E5'] as const,
     mint: ['#10B981', '#0EA5E9'] as const,

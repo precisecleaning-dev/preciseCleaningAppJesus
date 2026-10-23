@@ -28,5 +28,5 @@ export const styles = StyleSheet.create({
     row: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
     amountCol: { alignItems: 'flex-end', gap: 4 },
     adjustments: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
-    skeletons: { padding: space.md, gap: space.sm },
+    skeletons: { padding: space.md },
 });

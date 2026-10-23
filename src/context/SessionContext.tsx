@@ -4,11 +4,14 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { auth } from '../config/firebase';
 import { useWhenOnline } from '../hooks/useWhenOnline';
 import { resetCustomers } from '../services/customersService';
-import { loadFormConfig, loadRoles, signOut, subscribeProfile } from '../services/sessionService';
+import { loadFormConfig, signOut, subscribeProfile, subscribeRole } from '../services/sessionService';
 import type { FormVisibilityConfig, Permission, Role, SystemUser } from '../types';
 import { clearMemoryCache } from '../utils/memoryCache';
+import { isAdministratorRole } from '../utils/roles';
 
-type SessionState = 'checking' | 'signedOut' | 'loadingProfile' | 'signingOut' | 'noProfile' | 'inactive' | 'ready';
+type SessionState = 'checking' | 'signedOut' | 'loadingProfile' | 'signingOut' | 'noProfile' | 'inactive' | 'noRole' | 'roleError' | 'ready';
+
+type RoleStatus = 'loading' | 'ready' | 'missing' | 'error';
 
 interface SessionValue {
     state: SessionState;
@@ -20,6 +23,7 @@ interface SessionValue {
     housesPermission: Permission | undefined;
     isElementVisible: (elementId: string) => boolean;
     isFieldReadOnly: (fieldId: string) => boolean;
+    retryRole: () => void;
     signOut: () => void;
 }
 
@@ -30,85 +34,115 @@ interface SessionCache {
     formConfig: FormVisibilityConfig;
 }
 
+interface RoleSnapshot {
+    roleId: string;
+    role: Role | null;
+}
+
+interface SessionProviderProps {
+    children: ReactNode;
+}
+
 const CACHE_KEY = 'pc_crew_session_cache_v1';
 const LOADING_MIN_MS = 1200;
-const minDelay = () => new Promise((resolve) => setTimeout(resolve, LOADING_MIN_MS));
+const waitMinimumLoading = () => new Promise((resolve) => setTimeout(resolve, LOADING_MIN_MS));
 const SessionContext = createContext<SessionValue | null>(null);
 
-export function SessionProvider({ children }: { children: ReactNode }) {
+const roleStatusOf = (roleId: string, roleSnapshot: RoleSnapshot | null, failedRoleId: string | null): RoleStatus => {
+    if (!roleId) return 'missing';
+    if (roleSnapshot?.roleId === roleId) return roleSnapshot.role ? 'ready' : 'missing';
+    if (failedRoleId === roleId) return 'error';
+    return 'loading';
+};
+
+export const SessionProvider = ({ children }: SessionProviderProps) => {
     const [authUser, setAuthUser] = useState<User | null>(null);
     const [authChecked, setAuthChecked] = useState(false);
     const [signingOut, setSigningOut] = useState(false);
     const [signingIn, setSigningIn] = useState(false);
     const lastLogin = useRef<symbol | null>(null);
     const [profile, setProfile] = useState<{ email: string; user: SystemUser | null } | null>(null);
-    const [roles, setRoles] = useState<Role[] | null>(null);
+    const [roleSnapshot, setRoleSnapshot] = useState<RoleSnapshot | null>(null);
+    const [failedRoleId, setFailedRoleId] = useState<string | null>(null);
+    const [roleSubscriptionKey, setRoleSubscriptionKey] = useState(0);
     const [formConfig, setFormConfig] = useState<FormVisibilityConfig | null>(null);
 
     const email = authUser?.email?.toLowerCase().trim() || '';
+    const profileLoaded = !!email && profile?.email === email;
+    const user = profileLoaded ? profile.user : null;
+    const roleId = user?.roleId ?? '';
 
     useEffect(() => {
         let checked = false;
-        return onAuthStateChanged(auth, (u) => {
-            if (checked && u) {
+        return onAuthStateChanged(auth, (firebaseUser) => {
+            if (checked && firebaseUser) {
                 const login = Symbol('login');
                 lastLogin.current = login;
                 setSigningIn(true);
-                minDelay().then(() => {
+                waitMinimumLoading().then(() => {
                     if (lastLogin.current === login) setSigningIn(false);
                 });
             }
             checked = true;
-            setAuthUser(u);
+            setAuthUser(firebaseUser);
             setAuthChecked(true);
         });
     }, []);
 
     useEffect(() => {
         if (!email) return;
-        let live = false;
+        let isLive = false;
         AsyncStorage.getItem(CACHE_KEY)
-            .then((raw) => {
-                const c = raw ? (JSON.parse(raw) as SessionCache) : null;
-                if (!c || c.email !== email || live) return;
-                setProfile((p) => (p?.email === email ? p : { email, user: c.user }));
-                setRoles((r) => r ?? c.roles);
-                setFormConfig((f) => f ?? c.formConfig);
+            .then((rawCache) => {
+                const cache = rawCache ? (JSON.parse(rawCache) as SessionCache) : null;
+                if (!cache || cache.email !== email || isLive) return;
+                setProfile((current) => (current?.email === email ? current : { email, user: cache.user }));
+                const cachedRole = cache.user ? cache.roles.find((role) => role.id === cache.user?.roleId) : undefined;
+                if (cachedRole) setRoleSnapshot((current) => current ?? { roleId: cachedRole.id, role: cachedRole });
+                setFormConfig((current) => current ?? cache.formConfig);
             })
             .catch(() => undefined);
-        return subscribeProfile(email, (user) => {
-            live = true;
-            setProfile({ email, user });
+        return subscribeProfile(email, (profileUser) => {
+            isLive = true;
+            setProfile({ email, user: profileUser });
         });
     }, [email]);
 
+    useEffect(() => {
+        if (!roleId) return;
+        return subscribeRole(
+            roleId,
+            (role) => {
+                setFailedRoleId(null);
+                setRoleSnapshot({ roleId, role });
+            },
+            (error) => {
+                console.error('Error loading role:', error);
+                setFailedRoleId(roleId);
+            },
+        );
+    }, [roleId, roleSubscriptionKey]);
+
     useWhenOnline(() => {
-        loadRoles()
-            .then(setRoles)
-            .catch((err) => {
-                console.error('Error cargando roles:', err);
-                setRoles((r) => r ?? []);
-            });
         loadFormConfig()
             .then(setFormConfig)
-            .catch((err) => {
-                console.error('Error cargando houses_form_config:', err);
-                setFormConfig((f) => f ?? {});
+            .catch((error) => {
+                console.error('Error loading houses_form_config:', error);
+                setFormConfig((current) => current ?? {});
             });
     }, !!email);
 
-    useEffect(() => {
-        if (!email || profile?.email !== email || !profile.user || !roles || !formConfig) return;
-        const cache: SessionCache = { email, user: profile.user, roles, formConfig };
-        AsyncStorage.setItem(CACHE_KEY, JSON.stringify(cache)).catch(() => undefined);
-    }, [email, profile, roles, formConfig]);
+    const roleStatus = roleStatusOf(roleId, roleSnapshot, failedRoleId);
+    const role = roleStatus === 'ready' ? (roleSnapshot?.role ?? null) : null;
 
-    const profileLoaded = !!email && profile?.email === email;
-    const user = profileLoaded ? profile.user : null;
-    const role = user ? ((roles || []).find((r) => r.id === user.roleId) ?? null) : null;
-    const isSuperAdmin = role?.name === 'Administrator';
-    const housesPermission = role?.permissions?.find((p) => p.module === 'Houses');
-    const roleId = user?.roleId;
+    useEffect(() => {
+        if (!email || !user || !role || !formConfig) return;
+        const cache: SessionCache = { email, user, roles: [role], formConfig };
+        AsyncStorage.setItem(CACHE_KEY, JSON.stringify(cache)).catch(() => undefined);
+    }, [email, user, role, formConfig]);
+
+    const isSuperAdmin = isAdministratorRole(role);
+    const housesPermission = role?.permissions?.find((permission) => permission.module === 'Houses');
 
     let state: SessionState = 'ready';
     if (!authChecked) state = 'checking';
@@ -117,38 +151,45 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     else if (!profileLoaded || signingIn) state = 'loadingProfile';
     else if (!user) state = 'noProfile';
     else if (user.status === 'Inactive') state = 'inactive';
+    else if (roleStatus === 'loading') state = 'loadingProfile';
+    else if (roleStatus === 'missing') state = 'noRole';
+    else if (roleStatus === 'error') state = 'roleError';
 
     const value: SessionValue = {
         state,
-        configLoaded: roles !== null && formConfig !== null,
+        configLoaded: roleStatus === 'ready' && formConfig !== null,
         authUser,
         user,
         role,
         isSuperAdmin,
         housesPermission,
-        isElementVisible: (id) => isSuperAdmin || !roleId || !(formConfig?.visibility?.[id] || []).includes(roleId),
-        isFieldReadOnly: (id) => !isSuperAdmin && (!!housesPermission?.readOnlyFields?.includes(id) || (!!roleId && (formConfig?.readOnly?.[id] || []).includes(roleId))),
+        isElementVisible: (elementId) => isSuperAdmin || !(formConfig?.visibility?.[elementId] || []).includes(roleId),
+        isFieldReadOnly: (fieldId) => !isSuperAdmin && (!!housesPermission?.readOnlyFields?.includes(fieldId) || (formConfig?.readOnly?.[fieldId] || []).includes(roleId)),
+        retryRole: () => {
+            setFailedRoleId(null);
+            setRoleSubscriptionKey((key) => key + 1);
+        },
         signOut: () => {
             setSigningOut(true);
             clearMemoryCache();
             resetCustomers();
-            Promise.all([signOut(), minDelay()])
-                .catch((err) => console.error('Error cerrando sesión:', err))
+            Promise.all([signOut(), waitMinimumLoading()])
+                .catch((error) => console.error('Error signing out:', error))
                 .then(() => setSigningOut(false));
         },
     };
 
     return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
-}
+};
 
-export function useSession(): SessionValue {
-    const ctx = useContext(SessionContext);
-    if (!ctx) throw new Error('useSession debe usarse dentro de <SessionProvider>');
-    return ctx;
-}
+export const useSession = (): SessionValue => {
+    const context = useContext(SessionContext);
+    if (!context) throw new Error('useSession must be used inside <SessionProvider>');
+    return context;
+};
 
-export function useCurrentUser(): SystemUser {
+export const useCurrentUser = (): SystemUser => {
     const { user } = useSession();
-    if (!user) throw new Error('useCurrentUser requiere una sesión lista');
+    if (!user) throw new Error('useCurrentUser requires a ready session');
     return user;
-}
+};

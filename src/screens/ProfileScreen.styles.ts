@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors, radius, shadow, space, TAB_BAR_SPACE, type } from '../theme/tokens';
+import { colors, space, TAB_BAR_SPACE, type } from '../theme/tokens';
 
 export const styles = StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.bg },
@@ -9,8 +9,8 @@ export const styles = StyleSheet.create({
     ring: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center' },
     avatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
     tags: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginTop: space.xxs },
-    card: { marginHorizontal: space.md, backgroundColor: colors.surface, borderRadius: radius.xl, padding: space.lg, gap: space.md, ...shadow.card },
-    statsCard: { marginTop: -60, flexDirection: 'row', alignItems: 'center', paddingVertical: space.md, ...shadow.raised },
+    card: { marginHorizontal: space.md, gap: space.md },
+    statsCard: { marginTop: -60, flexDirection: 'row', alignItems: 'center', paddingVertical: space.md },
     stat: { flex: 1, alignItems: 'center', gap: 4 },
     statValue: { ...type.number, fontSize: 22, lineHeight: 28, color: colors.text, padding: 0, textAlign: 'center', alignSelf: 'stretch' },
     vr: { width: 1, alignSelf: 'stretch', backgroundColor: colors.border },

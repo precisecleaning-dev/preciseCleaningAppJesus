@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import { Pressable, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import AppText from './AppText';
 import { styles } from './SegmentedTabs.styles';
 
@@ -12,39 +12,52 @@ interface Option<T extends string> {
 interface Props<T extends string> {
     options: Option<T>[];
     value: T;
-    onChange: (v: T) => void;
+    onChange: (value: T) => void;
+    scrollable?: boolean;
 }
 
-export default function SegmentedTabs<T extends string>({ options, value, onChange }: Props<T>) {
-    return (
-        <View style={styles.wrap} accessibilityRole="tablist">
-            {options.map((o) => {
-                const active = o.value === value;
-                return (
-                    <Pressable
-                        key={o.value}
-                        accessibilityRole="tab"
-                        accessibilityState={{ selected: active }}
-                        onPress={() => {
-                            if (active) return;
-                            Haptics.selectionAsync().catch(() => undefined);
-                            onChange(o.value);
-                        }}
-                        style={[styles.item, active && styles.itemActive]}
-                    >
-                        <AppText variant="caption" style={active ? styles.labelActive : styles.label}>
-                            {o.label}
+const SegmentedTabs = <T extends string>({ options, value, onChange, scrollable = false }: Props<T>) => {
+    const tabs = options.map((option) => {
+        const isActive = option.value === value;
+        return (
+            <Pressable
+                key={option.value}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isActive }}
+                onPress={() => {
+                    if (isActive) return;
+                    Haptics.selectionAsync().catch(() => undefined);
+                    onChange(option.value);
+                }}
+                style={[scrollable ? styles.itemScrollable : styles.item, isActive && styles.itemActive]}
+            >
+                <AppText variant="caption" style={isActive ? styles.labelActive : styles.label}>
+                    {option.label}
+                </AppText>
+                {option.count !== undefined && (
+                    <View style={[styles.count, isActive && styles.countActive]}>
+                        <AppText variant="caption" style={[styles.countText, isActive && styles.countTextActive]}>
+                            {option.count}
                         </AppText>
-                        {o.count !== undefined && (
-                            <View style={[styles.count, active && styles.countActive]}>
-                                <AppText variant="caption" style={[styles.countText, active && styles.countTextActive]}>
-                                    {o.count}
-                                </AppText>
-                            </View>
-                        )}
-                    </Pressable>
-                );
-            })}
-        </View>
+                    </View>
+                )}
+            </Pressable>
+        );
+    });
+
+    if (!scrollable) {
+        return (
+            <View style={styles.wrap} accessibilityRole="tablist">
+                {tabs}
+            </View>
+        );
+    }
+
+    return (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollWrap} contentContainerStyle={styles.scrollContent} accessibilityRole="tablist">
+            {tabs}
+        </ScrollView>
     );
-}
+};
+
+export default SegmentedTabs;

@@ -11,7 +11,7 @@ import { styles } from './JobCard.styles';
 import AppText from './ui/AppText';
 import Chip from './ui/Chip';
 import IconBubble from './ui/IconBubble';
-import Touchable from './ui/Touchable';
+import StripeCard from './ui/StripeCard';
 import { t } from '../constants/strings';
 
 interface Props {
@@ -31,48 +31,45 @@ export default function JobCard({ job, pending, onPress }: Props) {
     const client = clientName(job);
 
     return (
-        <Touchable onPress={() => onPress(job)} style={styles.card} accessibilityLabel={`${client}, ${job.address}, ${v.label}`}>
-            <View style={[styles.stripe, { backgroundColor: stripe }]} />
-            <View style={styles.body}>
-                <View style={styles.top}>
-                    <IconBubble icon={v.icon} accent={v.accent} />
-                    <View style={styles.titles}>
-                        <AppText variant="title" numberOfLines={1}>
-                            {client}
+        <StripeCard stripeColor={stripe} onPress={() => onPress(job)} accessibilityLabel={`${client}, ${job.address}, ${v.label}`}>
+            <View style={styles.top}>
+                <IconBubble icon={v.icon} accent={v.accent} />
+                <View style={styles.titles}>
+                    <AppText variant="title" numberOfLines={1}>
+                        {client}
+                    </AppText>
+                    <View style={styles.line}>
+                        <MapPin size={13} color={colors.textMuted} />
+                        <AppText variant="small" tone="muted" numberOfLines={1} style={styles.flex}>
+                            {job.address || '—'}
                         </AppText>
-                        <View style={styles.line}>
-                            <MapPin size={13} color={colors.textMuted} />
-                            <AppText variant="small" tone="muted" numberOfLines={1} style={styles.flex}>
-                                {job.address || '—'}
-                            </AppText>
-                        </View>
                     </View>
-                    <ChevronRight size={20} color={colors.textSoft} />
                 </View>
-
-                <View style={styles.chips}>
-                    <Chip
-                        icon={Clock}
-                        accent="sky"
-                        label={[formatDate(job.scheduleDate || job.receiveDate) || t.noDate, isElementVisible('timeIn') ? time : ''].filter(Boolean).join(' · ')}
-                    />
-                    {isElementVisible('serviceId') && <Chip icon={Sparkles} accent="teal" label={serviceName(job)} />}
-                </View>
-
-                <View style={styles.footer}>
-                    {isElementVisible('statusId') && status && <Chip label={status.name} color={status.color} />}
-                    <Chip label={v.label} accent={v.accent} solid={v.accent !== 'sky'} />
-                    {(photos > 0 || pending > 0) && (
-                        <View style={styles.photos}>
-                            <Camera size={14} color={pending > 0 ? accents.amber.ink : colors.textMuted} />
-                            <AppText variant="caption" style={pending > 0 ? styles.photosPending : styles.photosText}>
-                                {photos}
-                                {pending > 0 ? ` +${pending}` : ''}
-                            </AppText>
-                        </View>
-                    )}
-                </View>
+                <ChevronRight size={20} color={colors.textSoft} />
             </View>
-        </Touchable>
+
+            <View style={styles.chips}>
+                <Chip
+                    icon={Clock}
+                    accent="sky"
+                    label={[formatDate(job.scheduleDate || job.receiveDate) || t.noDate, isElementVisible('timeIn') ? time : ''].filter(Boolean).join(' · ')}
+                />
+                {isElementVisible('serviceId') && <Chip icon={Sparkles} accent="teal" label={serviceName(job)} />}
+            </View>
+
+            <View style={styles.footer}>
+                {isElementVisible('statusId') && status && <Chip label={status.name} color={status.color} />}
+                <Chip label={v.label} accent={v.accent} solid={v.accent !== 'sky'} />
+                {(photos > 0 || pending > 0) && (
+                    <View style={styles.photos}>
+                        <Camera size={14} color={pending > 0 ? accents.amber.ink : colors.textMuted} />
+                        <AppText variant="caption" style={pending > 0 ? styles.photosPending : styles.photosText}>
+                            {photos}
+                            {pending > 0 ? ` +${pending}` : ''}
+                        </AppText>
+                    </View>
+                )}
+            </View>
+        </StripeCard>
     );
 }

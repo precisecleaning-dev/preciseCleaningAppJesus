@@ -4,6 +4,9 @@ import { accents, colors, radius, shadow } from '../../theme/tokens';
 export const styles = StyleSheet.create({
     wrap: { flexDirection: 'row', backgroundColor: colors.track, borderRadius: radius.md, padding: 4 },
     item: { flex: 1, minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: radius.sm },
+    scrollWrap: { flexGrow: 0, backgroundColor: colors.track, borderRadius: radius.md },
+    scrollContent: { padding: 4, gap: 4 },
+    itemScrollable: { minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: radius.sm, paddingHorizontal: 14 },
     itemActive: { backgroundColor: colors.surface, ...shadow.card },
     label: { color: colors.textMuted },
     labelActive: { color: colors.primary },

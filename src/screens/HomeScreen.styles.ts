@@ -23,5 +23,5 @@ export const styles = StyleSheet.create({
     overlap: { marginTop: -62, paddingHorizontal: space.md },
     tabs: { paddingHorizontal: space.md, paddingTop: space.lg, paddingBottom: space.sm },
     item: { paddingHorizontal: space.md, paddingBottom: space.sm },
-    skeletons: { paddingHorizontal: space.md, gap: space.sm },
+    skeletons: { paddingHorizontal: space.md },
 });

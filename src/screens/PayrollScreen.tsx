@@ -8,7 +8,7 @@ import Chip from '../components/ui/Chip';
 import EmptyState from '../components/ui/EmptyState';
 import GradientHeader from '../components/ui/GradientHeader';
 import IconBubble from '../components/ui/IconBubble';
-import { JobCardSkeleton } from '../components/ui/Skeleton';
+import { CardSkeletonList } from '../components/ui/Skeleton';
 import { useJobs } from '../context/JobsContext';
 import { useOnline } from '../context/NetworkContext';
 import { usePayroll } from '../context/PayrollContext';
@@ -134,10 +134,7 @@ export default function PayrollScreen() {
         return (
             <View style={styles.screen}>
                 {header}
-                <View style={styles.skeletons}>
-                    <JobCardSkeleton />
-                    <JobCardSkeleton />
-                </View>
+                <CardSkeletonList count={2} style={styles.skeletons} />
             </View>
         );
     }
