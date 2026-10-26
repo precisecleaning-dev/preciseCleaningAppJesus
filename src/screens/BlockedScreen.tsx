@@ -10,7 +10,7 @@ import { useSession } from '../context/SessionContext';
 import { colors, gradients } from '../theme/tokens';
 import { styles } from './BlockedScreen.styles';
 
-type BlockedReason = 'noProfile' | 'inactive' | 'noRole' | 'roleError';
+type BlockedReason = 'noProfile' | 'profileError' | 'inactive' | 'noRole' | 'roleError';
 
 interface Props {
     reason: BlockedReason;
@@ -18,13 +18,15 @@ interface Props {
 
 const CONTENT: Record<BlockedReason, { icon: LucideIcon; title: string; body: string }> = {
     noProfile: { icon: UserX, title: t.noProfileTitle, body: t.noProfileBody },
+    profileError: { icon: ShieldAlert, title: t.profileErrorTitle, body: t.profileErrorBody },
     inactive: { icon: UserX, title: t.noProfileTitle, body: t.inactiveBody },
     noRole: { icon: ShieldOff, title: t.noRoleTitle, body: t.noRoleBody },
     roleError: { icon: ShieldAlert, title: t.roleErrorTitle, body: t.roleErrorBody },
 };
 
 const BlockedScreen = ({ reason }: Props) => {
-    const { signOut, authUser, retryRole } = useSession();
+    const { signOut, authUser, retryProfile, retryPermissions } = useSession();
+    const retry = reason === 'profileError' ? retryProfile : reason === 'roleError' ? retryPermissions : null;
     const content = CONTENT[reason];
     return (
         <SafeAreaView style={styles.screen}>
@@ -44,7 +46,7 @@ const BlockedScreen = ({ reason }: Props) => {
                 {authUser?.email}
             </AppText>
             <View style={styles.action}>
-                {reason === 'roleError' && <Button variant="soft" label={t.tryAgain} onPress={retryRole} icon={<RefreshCw size={18} color={colors.primaryDark} />} />}
+                {retry && <Button variant="soft" label={t.tryAgain} onPress={retry} icon={<RefreshCw size={18} color={colors.primaryDark} />} />}
                 <Button variant="outline" label={t.signOut} onPress={signOut} />
             </View>
         </SafeAreaView>

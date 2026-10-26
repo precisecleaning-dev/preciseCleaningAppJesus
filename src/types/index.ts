@@ -119,3 +119,5 @@ export interface FormVisibilityConfig {
 }
 
 export type PhotoKind = 'before' | 'after';
+
+export type LoadStatus = 'loading' | 'ready' | 'offline' | 'error';

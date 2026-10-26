@@ -12,21 +12,16 @@ export const typedCollection = <T extends { id: string }>(path: string) => colle
 
 export const isDocId = (k: string) => !!k && !k.includes('/') && k !== '.' && k !== '..' && !/^__.*__$/.test(k);
 
-export function chunk<T>(list: T[], size = 30): T[][] {
-    const out: T[][] = [];
-    for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
-    return out;
-}
+export const FIRESTORE_IN_LIMIT = 30;
 
-export function listen<T>(q: Query<T>, onData: (rows: T[]) => void, what: string): () => void {
-    return onSnapshot(
-        q,
-        (snap) => {
-            if (!(snap.empty && snap.metadata.fromCache)) onData(snap.docs.map((d) => d.data()));
+export const listen = <T>(listenQuery: Query<T>, onData: (rows: T[]) => void, onError: (error: unknown) => void, description: string): (() => void) =>
+    onSnapshot(
+        listenQuery,
+        (snapshot) => {
+            if (!(snapshot.empty && snapshot.metadata.fromCache)) onData(snapshot.docs.map((rowDoc) => rowDoc.data()));
         },
-        (err) => {
-            console.error(`Error cargando ${what}:`, err);
-            onData([]);
+        (error) => {
+            console.error(`Error loading ${description}:`, error);
+            onError(error);
         },
     );
-}

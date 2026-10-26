@@ -1,4 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { t } from '../constants/strings';
+import { useLiveSubscription } from '../hooks/useLiveSubscription';
 import { useWhenOnline } from '../hooks/useWhenOnline';
 import { getCustomersByKeys } from '../services/customersService';
 import { subscribeAssigned, subscribeTeam } from '../services/propertiesService';
@@ -7,86 +9,109 @@ import { displayClientName, findRelation } from '../utils/relations';
 import { useCatalogs } from './CatalogsContext';
 import { useOnline } from './NetworkContext';
 import { useSession } from './SessionContext';
-import { t } from '../constants/strings';
+
+export type JobsStatus = 'noAccess' | 'loading' | 'ready' | 'error';
 
 interface JobsValue {
     jobs: Property[];
+    jobsStatus: JobsStatus;
     jobsLoaded: boolean;
     settled: boolean;
+    retryJobs: () => void;
     getJob: (id: string) => Property | undefined;
-    clientName: (p: Property) => string;
-    serviceName: (p: Property) => string;
-    statusOf: (p: Property) => Status | undefined;
-    logLabel: (p: Property) => string;
+    clientName: (property: Property) => string;
+    serviceName: (property: Property) => string;
+    statusOf: (property: Property) => Status | undefined;
+    logLabel: (property: Property) => string;
     requestClients: (keys: string[]) => void;
 }
 
-type Keyed<T> = { key: string; list: T[] } | null;
+interface JobsProviderProps {
+    children: ReactNode;
+}
+
+type Keyed<Item> = { key: string; list: Item[] } | null;
+
 const JobsContext = createContext<JobsValue | null>(null);
 
-export function JobsProvider({ children }: { children: ReactNode }) {
-    const { user, isSuperAdmin, housesPermission, isElementVisible, configLoaded } = useSession();
+export const JobsProvider = ({ children }: JobsProviderProps) => {
+    const { user, housesPermission, isElementVisible, configLoaded } = useSession();
     const { statuses, teams, products, services, loaded: catalogsLoaded } = useCatalogs();
-    const online = useOnline();
-    const [assigned, setAssigned] = useState<Keyed<Property>>(null);
-    const [byTeam, setByTeam] = useState<Keyed<Property>>(null);
+    const isOnline = useOnline();
     const [customers, setCustomers] = useState<Keyed<Customer>>(null);
     const [extraKeys, setExtraKeys] = useState('');
-    const [retry, setRetry] = useState(0);
+    const [customersRetry, setCustomersRetry] = useState(0);
 
+    const hasHousesAccess = housesPermission?.canView === true;
     const userId = user?.id ?? '';
     const team = findRelation(teams, user?.teamId);
     const teamKey = [...new Set([user?.teamId, team?.id, team?.name].filter(Boolean))].join('|');
 
-    useEffect(() => {
-        if (!userId) return;
-        return subscribeAssigned(userId, (list) => setAssigned({ key: userId, list }));
-    }, [userId]);
-
-    useEffect(() => {
-        if (!teamKey) return;
-        return subscribeTeam(teamKey.split('|'), (list) => setByTeam({ key: teamKey, list }));
-    }, [teamKey]);
-
-    const assignedLoaded = assigned?.key === userId;
-    const teamLoaded = !teamKey || byTeam?.key === teamKey;
-    const merged = new Map<string, Property>();
-    [...(assignedLoaded ? assigned.list : []), ...(teamLoaded && byTeam ? byTeam.list : [])].forEach((p) => merged.set(p.id, p));
-
-    const statusOf = (p: Property) => findRelation(statuses, p.statusId);
-    const allowed = housesPermission?.allowedStatusIds || [];
-    const jobs = [...merged.values()].filter((p) => {
-        const st = statusOf(p);
-        if (statuses.length > 0 && !st) return false;
-        if (!isSuperAdmin && allowed.length > 0 && !allowed.includes(p.statusId) && !(st && allowed.includes(st.id))) return false;
-        return !st || isElementVisible(`status_${st.id}`);
+    const assigned = useLiveSubscription<Property[]>({
+        key: `assigned:${userId}`,
+        isEnabled: !!userId && hasHousesAccess,
+        subscribe: (onData, onError) => subscribeAssigned(userId, (houses) => onData(houses, false), onError),
+        description: 'assigned houses',
+    });
+    const byTeam = useLiveSubscription<Property[]>({
+        key: `team:${teamKey}`,
+        isEnabled: !!teamKey && hasHousesAccess,
+        subscribe: (onData, onError) => subscribeTeam(teamKey.split('|'), (houses) => onData(houses, false), onError),
+        description: 'team houses',
     });
 
-    const clientKeys = [...new Set([...jobs.map((j) => j.client), ...extraKeys.split('|')].filter(Boolean))].sort().join('|');
+    const hasFailed = assigned.hasFailed || byTeam.hasFailed;
+    const retryJobs = () => {
+        assigned.retry();
+        byTeam.retry();
+    };
+
+    const assignedLoaded = assigned.value !== null;
+    const teamLoaded = !teamKey || byTeam.value !== null;
+    const housesById = new Map<string, Property>();
+    if (hasHousesAccess) [...(assigned.value ?? []), ...(teamKey ? (byTeam.value ?? []) : [])].forEach((house) => housesById.set(house.id, house));
+
+    const statusOf = (property: Property) => findRelation(statuses, property.statusId);
+    const allowedStatusIds = housesPermission?.allowedStatusIds || [];
+    const jobs = [...housesById.values()].filter((property) => {
+        const status = statusOf(property);
+        if (statuses.length > 0 && !status) return false;
+        if (allowedStatusIds.length > 0 && !allowedStatusIds.includes(property.statusId) && !(status && allowedStatusIds.includes(status.id))) return false;
+        return !status || isElementVisible(`status_${status.id}`);
+    });
+
+    let jobsStatus: JobsStatus = 'ready';
+    if (!hasHousesAccess) jobsStatus = 'noAccess';
+    else if (hasFailed) jobsStatus = 'error';
+    else if (!assignedLoaded) jobsStatus = 'loading';
+
+    const clientKeys = [...new Set([...jobs.map((job) => job.client), ...extraKeys.split('|')].filter(Boolean))].sort().join('|');
     useEffect(() => {
-        if (!clientKeys || !online) return;
-        let cancelled = false;
+        if (!clientKeys || !isOnline) return;
+        let isCancelled = false;
         getCustomersByKeys(clientKeys.split('|')).then(({ list, complete }) => {
-            if (!cancelled) setCustomers({ key: complete ? clientKeys : '', list });
+            if (!isCancelled) setCustomers({ key: complete ? clientKeys : '', list });
         });
         return () => {
-            cancelled = true;
+            isCancelled = true;
         };
-    }, [clientKeys, online, retry]);
+    }, [clientKeys, isOnline, customersRetry]);
 
-    useWhenOnline(() => setRetry((n) => n + 1), customers?.key === '');
+    useWhenOnline(() => setCustomersRetry((attempt) => attempt + 1), customers?.key === '');
 
     const customerList = customers?.list ?? [];
-    const clientName = (p: Property) => displayClientName(customerList, p.client, { unknown: t.unknownClient, deleted: t.deletedClient });
+    const clientName = (property: Property) => displayClientName(customerList, property.client, { unknown: t.unknownClient, deleted: t.deletedClient });
     const value: JobsValue = {
         jobs,
-        jobsLoaded: assignedLoaded,
-        settled: assignedLoaded && teamLoaded && catalogsLoaded && configLoaded && (!clientKeys || customers?.key === clientKeys),
-        getJob: (id) => merged.get(id),
+        jobsStatus,
+        jobsLoaded: jobsStatus === 'ready',
+        settled: jobsStatus === 'ready' && teamLoaded && catalogsLoaded && configLoaded && (!clientKeys || customers?.key === clientKeys),
+        retryJobs,
+        getJob: (id) => housesById.get(id),
         clientName,
-        serviceName: (p) => (findRelation(products, p.serviceId) ?? findRelation(services, p.serviceId))?.name ?? '—',
+        serviceName: (property) => (findRelation(products, property.serviceId) ?? findRelation(services, property.serviceId))?.name ?? '—',
         statusOf,
-        logLabel: (p) => (p.address ? `${clientName(p)} — ${p.address}` : clientName(p)),
+        logLabel: (property) => (property.address ? `${clientName(property)} — ${property.address}` : clientName(property)),
         requestClients: (keys) => {
             const next = [...new Set(keys.filter(Boolean))].sort().join('|');
             if (next !== extraKeys) setExtraKeys(next);
@@ -94,10 +119,10 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     };
 
     return <JobsContext.Provider value={value}>{children}</JobsContext.Provider>;
-}
+};
 
-export function useJobs(): JobsValue {
-    const ctx = useContext(JobsContext);
-    if (!ctx) throw new Error('useJobs debe usarse dentro de <JobsProvider>');
-    return ctx;
-}
+export const useJobs = (): JobsValue => {
+    const context = useContext(JobsContext);
+    if (!context) throw new Error('useJobs must be used inside <JobsProvider>');
+    return context;
+};

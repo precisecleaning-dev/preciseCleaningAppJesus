@@ -2,14 +2,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { auth } from '../config/firebase';
+import { useForegroundRetry } from '../hooks/useForegroundRetry';
 import { useWhenOnline } from '../hooks/useWhenOnline';
 import { resetCustomers } from '../services/customersService';
 import { loadFormConfig, signOut, subscribeProfile, subscribeRole } from '../services/sessionService';
 import type { FormVisibilityConfig, Permission, Role, SystemUser } from '../types';
 import { clearMemoryCache } from '../utils/memoryCache';
-import { isAdministratorRole } from '../utils/roles';
 
-type SessionState = 'checking' | 'signedOut' | 'loadingProfile' | 'signingOut' | 'noProfile' | 'inactive' | 'noRole' | 'roleError' | 'ready';
+type SessionState = 'checking' | 'signedOut' | 'loadingProfile' | 'signingOut' | 'noProfile' | 'profileError' | 'inactive' | 'noRole' | 'roleError' | 'ready';
 
 type RoleStatus = 'loading' | 'ready' | 'missing' | 'error';
 
@@ -19,11 +19,12 @@ interface SessionValue {
     authUser: User | null;
     user: SystemUser | null;
     role: Role | null;
-    isSuperAdmin: boolean;
     housesPermission: Permission | undefined;
+    canViewPayroll: boolean;
     isElementVisible: (elementId: string) => boolean;
     isFieldReadOnly: (fieldId: string) => boolean;
-    retryRole: () => void;
+    retryProfile: () => void;
+    retryPermissions: () => void;
     signOut: () => void;
 }
 
@@ -66,6 +67,9 @@ export const SessionProvider = ({ children }: SessionProviderProps) => {
     const [failedRoleId, setFailedRoleId] = useState<string | null>(null);
     const [roleSubscriptionKey, setRoleSubscriptionKey] = useState(0);
     const [formConfig, setFormConfig] = useState<FormVisibilityConfig | null>(null);
+    const [hasFormConfigFailed, setFormConfigFailed] = useState(false);
+    const [profileSubscriptionKey, setProfileSubscriptionKey] = useState(0);
+    const [failedProfileSubscription, setFailedProfileSubscription] = useState<string | null>(null);
 
     const email = authUser?.email?.toLowerCase().trim() || '';
     const profileLoaded = !!email && profile?.email === email;
@@ -102,11 +106,20 @@ export const SessionProvider = ({ children }: SessionProviderProps) => {
                 setFormConfig((current) => current ?? cache.formConfig);
             })
             .catch(() => undefined);
-        return subscribeProfile(email, (profileUser) => {
-            isLive = true;
-            setProfile({ email, user: profileUser });
-        });
-    }, [email]);
+        const subscriptionId = `${email}#${profileSubscriptionKey}`;
+        return subscribeProfile(
+            email,
+            (profileUser) => {
+                isLive = true;
+                setProfile({ email, user: profileUser });
+            },
+            () => setFailedProfileSubscription(subscriptionId),
+        );
+    }, [email, profileSubscriptionKey]);
+
+    const hasProfileFailed = !!email && failedProfileSubscription === `${email}#${profileSubscriptionKey}`;
+    const retryProfile = () => setProfileSubscriptionKey((key) => key + 1);
+    useForegroundRetry(retryProfile, hasProfileFailed);
 
     useEffect(() => {
         if (!roleId) return;
@@ -123,14 +136,19 @@ export const SessionProvider = ({ children }: SessionProviderProps) => {
         );
     }, [roleId, roleSubscriptionKey]);
 
-    useWhenOnline(() => {
+    const reloadFormConfig = () => {
         loadFormConfig()
-            .then(setFormConfig)
+            .then((loadedFormConfig) => {
+                setFormConfig(loadedFormConfig);
+                setFormConfigFailed(false);
+            })
             .catch((error) => {
                 console.error('Error loading houses_form_config:', error);
-                setFormConfig((current) => current ?? {});
+                setFormConfigFailed(true);
             });
-    }, !!email);
+    };
+
+    useWhenOnline(reloadFormConfig, !!email);
 
     const roleStatus = roleStatusOf(roleId, roleSnapshot, failedRoleId);
     const role = roleStatus === 'ready' ? (roleSnapshot?.role ?? null) : null;
@@ -141,19 +159,21 @@ export const SessionProvider = ({ children }: SessionProviderProps) => {
         AsyncStorage.setItem(CACHE_KEY, JSON.stringify(cache)).catch(() => undefined);
     }, [email, user, role, formConfig]);
 
-    const isSuperAdmin = isAdministratorRole(role);
     const housesPermission = role?.permissions?.find((permission) => permission.module === 'Houses');
+    const canViewPayroll = role?.permissions?.find((permission) => permission.module === 'Payroll')?.canView === true;
 
     let state: SessionState = 'ready';
     if (!authChecked) state = 'checking';
     else if (signingOut) state = 'signingOut';
     else if (!authUser) state = 'signedOut';
+    else if (!profileLoaded && hasProfileFailed) state = 'profileError';
     else if (!profileLoaded || signingIn) state = 'loadingProfile';
     else if (!user) state = 'noProfile';
     else if (user.status === 'Inactive') state = 'inactive';
     else if (roleStatus === 'loading') state = 'loadingProfile';
     else if (roleStatus === 'missing') state = 'noRole';
     else if (roleStatus === 'error') state = 'roleError';
+    else if (!formConfig) state = hasFormConfigFailed ? 'roleError' : 'loadingProfile';
 
     const value: SessionValue = {
         state,
@@ -161,13 +181,15 @@ export const SessionProvider = ({ children }: SessionProviderProps) => {
         authUser,
         user,
         role,
-        isSuperAdmin,
         housesPermission,
-        isElementVisible: (elementId) => isSuperAdmin || !(formConfig?.visibility?.[elementId] || []).includes(roleId),
-        isFieldReadOnly: (fieldId) => !isSuperAdmin && (!!housesPermission?.readOnlyFields?.includes(fieldId) || (formConfig?.readOnly?.[fieldId] || []).includes(roleId)),
-        retryRole: () => {
+        canViewPayroll,
+        isElementVisible: (elementId) => !(formConfig?.visibility?.[elementId] || []).includes(roleId),
+        isFieldReadOnly: (fieldId) => !!housesPermission?.readOnlyFields?.includes(fieldId) || (formConfig?.readOnly?.[fieldId] || []).includes(roleId),
+        retryProfile,
+        retryPermissions: () => {
             setFailedRoleId(null);
             setRoleSubscriptionKey((key) => key + 1);
+            reloadFormConfig();
         },
         signOut: () => {
             setSigningOut(true);

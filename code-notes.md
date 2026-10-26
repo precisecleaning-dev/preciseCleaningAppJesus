@@ -1,5 +1,101 @@
 # code-notes.md — decisiones y pendientes (app móvil)
 
+## 2026-10-26 · Revisión de código: #21 y #22 (cierre)
+
+- **#21:** el campo para escribir de `MessageThread` usa `TextField` (antes un `TextInput` suelto).
+  `TextField` acepta `containerStyle` para el contenedor. Cambio visible: el campo de notas de casas
+  y el de comentarios de tareas ahora marcan el borde azul al escribir, como el resto de los campos.
+- **#22:** quitados los textos sin uso `projectsActiveCount` y `projectStatus`.
+- **#11 sigue pendiente a propósito:** antes de limitar por fecha las casas del equipo hay que revisar
+  qué estructura dejó el junior en Firestore (formato real de `scheduleDate`, índices existentes).
+
+## 2026-10-26 · Revisión de código: paso 5 (#8–#10, #15–#19)
+
+- **#8 Fotos:** `storage/unknown` ya no se trata como error de red: cuenta como intento (máximo 5), en
+  vez de reintentarse para siempre.
+- **#9 `usePersistentList`:** las actualizaciones que llegan antes de leer la lista guardada se aplican
+  sobre lo leído, y no se escribe en el teléfono antes de cargar (antes podía borrar la cola).
+- **#10 Clientes:** el caché de `customersService` vence a los 10 min (`CONFIG_TTL`), también los
+  "no encontrado".
+- **#15 Login:** mensajes según el código de Firebase Auth: credenciales, sin conexión, demasiados
+  intentos, cuenta deshabilitada y error genérico. "Forgot password" ya no muestra el código crudo.
+- **#16 Payroll:** "Paid this month" y las barras usan `useNow()`.
+- **#17:** búsquedas con `Map` en `TasksScreen` (títulos de proyecto) y `PayrollScreen` (casas).
+- **#18:** `asText`/`asNullableText` en `src/utils/firestoreValues.ts`; `chunkList` en
+  `src/utils/chunkList.ts` (reemplaza `chunk` de `firestore.ts`; el límite de `in` es
+  `FIRESTORE_IN_LIMIT`).
+- **#19:** el formulario de tarea solo escucha `task_projects` (y muestra "Project") si el rol puede
+  ver proyectos.
+- **#11 pendiente:** limitar por fecha las casas del equipo necesita un índice compuesto (requiere
+  aprobación).
+
+## 2026-10-26 · Revisión de código: #13 y #14 (hooks unificados)
+
+- **#13:** `useLiveSubscription` reemplaza la lógica copiada de suscripción en `useOpenTasks`,
+  `useTask`, `useProjects`, `useProject`, `PayrollContext` y las dos suscripciones de `JobsContext`.
+  Lee la función de suscripción desde una ref: el efecto solo se rehace cuando cambia la `key`.
+  Efecto nuevo: tareas y proyectos también reintentan solos al volver la señal o la app al frente
+  (antes solo con "Try again").
+- **#14:** `useGuardedWrite` (aviso sin señal + alerta de error) reemplaza los `runWrite` de
+  `useTaskWriteActions` y `useProjectWriteActions` y los avisos sin señal de `useAttachments`.
+  `useCurrentActor` arma el autor de las escrituras.
+- `LoadStatus` se movió a `src/types/index.ts` (antes vivía dentro de `useTaskAccess`; parte del #23).
+
+## 2026-10-26 · Revisión de código: #6, #12 y #20 corregidos
+
+- **#6 Borrar proyecto:** después de desvincular sus tareas y borrarlo (contrato §4), se hace una
+  segunda consulta y se desvinculan las tareas que se hayan agregado mientras tanto. Si esa pasada
+  falla, el proyecto ya está borrado: se registra en consola y no se muestra error.
+- **#12 Adjuntos desde "Files":** si el selector no da dimensiones, se leen con `Image.getSize` antes de
+  comprimir, para redimensionar a 1920 px como pide el contrato §7. Si no se pueden leer, se comprime
+  sin redimensionar.
+- **#20 Adjuntos pendientes:** cada archivo elegido tiene un `pickId` propio; la misma foto elegida dos
+  veces ya no repite la `key` de React.
+
+## 2026-10-26 · Revisión de código: #7 corregido (bitácora de Start/Finish)
+
+- Antes, `OutboxContext.mark` escribía en `activity_logs` al tocar el botón, aunque el servidor después
+  rechazara el cambio. Ahora se registra en `sendMark` **solo después** de que `applyMark` confirma
+  (`'applied'` o `'alreadyApplied'`, que es un reintento tras una confirmación perdida). Un conflicto o
+  un `permission-denied` no deja registro.
+- Las marcas en cola de versiones anteriores (sin `kind`) no se registran de nuevo: la versión vieja ya
+  las registró al crearlas.
+- La bitácora se escribe con señal (justo después de confirmar), así que ya no se pierde por la caché
+  en memoria si la app se cierra sin señal.
+
+## 2026-10-23 · Permisos: solo lo que dice `settings_roles`
+
+- **Decisión del dueño:** todos los permisos salen tal cual de los flags de `settings_roles`; el código
+  no agrega reglas propias. Roles reales: Admin, Owner, Manager, System, Employee.
+- Se quitó el super admin por nombre (`Administrator`): no existe ese rol. Admin con `Task List`
+  scope `Own` ve solo sus tareas; para ver las de todos, la oficina cambia su scope a `All`.
+- Deshacer el Start/Finish de otra persona (antes "solo un admin") ahora lo permite `Houses.canEdit`.
+- La pestaña Payroll aparece solo con `Payroll.canView` (Manager no la tiene).
+- Consecuencias que se resuelven en Roles & Permissions de la web, no en código:
+  - Employee tiene `Task List` con `canAdd/canEdit/canDelete: true` → puede crear, editar y borrar
+    tareas, y (sin módulo `Projects`) también proyectos.
+  - Manager no tiene `Task List` → no ve tareas.
+  - Nadie tiene módulo `Projects` → los proyectos usan los flags de `Task List`.
+
+## 2026-10-23 · Revisión de código: hallazgos #1 a #5 corregidos
+
+- **#1 Listeners:** `listen()` ya no convierte errores en `[]`; exige `onError`. `JobsContext` y
+  `PayrollContext` tienen estado `error`, "Try again" y reintento automático al volver la señal o la
+  app al frente (`useForegroundRetry`; nunca en bucle). Con error, `settled` es `false`: no hay
+  avisos falsos de "casa retirada".
+- **#2 Start/Finish:** cada marca guarda el valor que vio el empleado. Se aplica en `runTransaction`
+  con `decideMark` (`src/utils/markGuard.ts`): igual al esperado → aplica; ya aplicado → nada;
+  distinto (alguien más cambió) o Finish sin Start → se descarta y se avisa (`markConflict`). Las
+  marcas viejas en cola (sin `guard`) se envían como antes. Como una transacción no aplica nada
+  local sin señal, `withPendingMarks` (Outbox) muestra las marcas en cola en Home y en el detalle.
+- **#3 `Houses.canView`:** sin él (y sin ser Administrator) Home muestra "Houses not available" y no
+  se consulta Firestore. **Verificar antes de publicar** que el rol de los empleados tenga el módulo
+  `Houses` con `canView: true`; si no, dejarían de ver sus casas.
+- **#4 `houses_form_config`:** si no carga y no hay copia guardada, la sesión queda en
+  "Couldn't load your permissions" (antes: todos los botones visibles).
+- **#5 Perfil:** un error del listener ya no muestra "User without profile". Con perfil (del
+  servidor o guardado) se conserva y se reintenta; sin perfil, "Couldn't load your profile".
+
 ## 2026-10-23 · Proyectos
 
 ### Decisiones

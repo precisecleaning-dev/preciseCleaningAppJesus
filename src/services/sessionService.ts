@@ -9,7 +9,7 @@ export const signIn = (email: string, password: string) => signInWithEmailAndPas
 export const resetPassword = (email: string) => sendPasswordResetEmail(auth, email.trim());
 export const signOut = () => firebaseSignOut(auth);
 
-export const subscribeProfile = (email: string, onData: (user: SystemUser | null) => void): (() => void) =>
+export const subscribeProfile = (email: string, onData: (user: SystemUser | null) => void, onError: (error: unknown) => void): (() => void) =>
     onSnapshot(
         query(typedCollection<SystemUser>('system_users'), where('email', '==', email), limit(1)),
         (snapshot) => {
@@ -17,7 +17,7 @@ export const subscribeProfile = (email: string, onData: (user: SystemUser | null
         },
         (error) => {
             console.error('Error loading profile:', error);
-            onData(null);
+            onError(error);
         },
     );
 

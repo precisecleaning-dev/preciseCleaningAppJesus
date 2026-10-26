@@ -105,7 +105,7 @@ const codeOf = (err: unknown) => String((err as { code?: string })?.code || '');
 export function uploadErrorKind(err: unknown): 'network' | 'permanent' | 'retry' {
     const code = codeOf(err);
     const msg = String((err as { message?: string })?.message || '').toLowerCase();
-    if (/storage\/(retry-limit-exceeded|canceled|unknown)|unavailable|deadline-exceeded/.test(code) || msg.includes('network')) return 'network';
+    if (/storage\/(retry-limit-exceeded|canceled)|unavailable|deadline-exceeded/.test(code) || msg.includes('network')) return 'network';
     if (/storage\/(unauthorized|quota-exceeded)|permission-denied|not-found/.test(code)) return 'permanent';
     return 'retry';
 }

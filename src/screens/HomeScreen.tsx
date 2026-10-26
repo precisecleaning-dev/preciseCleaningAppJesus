@@ -1,7 +1,21 @@
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Bell, CalendarCheck, CalendarClock, CalendarDays, CirclePlay, CloudUpload, History, House, Sparkles, type LucideIcon } from 'lucide-react-native';
+import {
+    Bell,
+    CalendarCheck,
+    CalendarClock,
+    CalendarDays,
+    CirclePlay,
+    CloudUpload,
+    History,
+    House,
+    Lock,
+    RefreshCw,
+    Sparkles,
+    TriangleAlert,
+    type LucideIcon,
+} from 'lucide-react-native';
 import { useState } from 'react';
 import { useNow } from '../hooks/useNow';
 import { FlatList, View } from 'react-native';
@@ -9,13 +23,16 @@ import JobCard from '../components/JobCard';
 import NextJobCard from '../components/NextJobCard';
 import StatusScrim from '../components/StatusScrim';
 import AppText from '../components/ui/AppText';
+import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
+import type { Orbits } from '../components/ui/Illustration';
 import GradientHeader from '../components/ui/GradientHeader';
 import IconButton from '../components/ui/IconButton';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { CardSkeletonList, JobCardSkeleton } from '../components/ui/Skeleton';
 import { useJobs } from '../context/JobsContext';
 import { useNotifications } from '../context/NotificationsContext';
+import { useOutbox } from '../context/OutboxContext';
 import { usePhotoQueue } from '../context/PhotoQueueContext';
 import { useCurrentUser } from '../context/SessionContext';
 import type { RootStackParams, TabParams } from '../navigation/types';
@@ -48,7 +65,10 @@ function Stat({ icon: Icon, value, label, accent }: { icon: LucideIcon; value: n
 
 export default function HomeScreen({ navigation }: Props) {
     const user = useCurrentUser();
-    const { jobs, jobsLoaded } = useJobs();
+    const { jobs: storedJobs, jobsStatus, retryJobs } = useJobs();
+    const { withPendingMarks } = useOutbox();
+    const jobs = storedJobs.map(withPendingMarks);
+    const jobsLoaded = jobsStatus === 'ready';
     const { queue, pendingFor } = usePhotoQueue();
     const { unread } = useNotifications();
     const [segment, setSegment] = useState<Segment>('today');
@@ -68,6 +88,26 @@ export default function HomeScreen({ navigation }: Props) {
         upcoming: { title: t.noUpcomingTitle, body: t.noUpcomingBody, icon: CalendarClock, gradient: gradients.violet },
         history: { title: t.noHistoryTitle, body: t.noHistoryBody, icon: History, gradient: gradients.mint },
     }[segment];
+
+    const emptyOrbits: Orbits = [
+        { icon: House, accent: 'sky' },
+        { icon: Sparkles, accent: 'amber' },
+        { icon: Bell, accent: 'coral' },
+    ];
+
+    const renderEmptyState = () => {
+        if (jobsStatus === 'loading') return <CardSkeletonList count={3} style={styles.skeletons} />;
+        if (jobsStatus === 'noAccess') return <EmptyState icon={Lock} gradient={gradients.brand} orbits={emptyOrbits} title={t.housesNoAccessTitle} body={t.housesNoAccessBody} />;
+        if (jobsStatus === 'error') {
+            return (
+                <View style={styles.errorState}>
+                    <EmptyState icon={TriangleAlert} gradient={gradients.amber} orbits={emptyOrbits} title={t.housesErrorTitle} body={t.housesErrorBody} />
+                    <Button variant="soft" label={t.tryAgain} onPress={retryJobs} icon={<RefreshCw size={18} color={colors.primaryDark} />} />
+                </View>
+            );
+        }
+        return <EmptyState icon={empty.icon} gradient={empty.gradient} orbits={emptyOrbits} title={empty.title} body={empty.body} />;
+    };
 
     const header = (
         <View>
@@ -94,7 +134,7 @@ export default function HomeScreen({ navigation }: Props) {
                     <Stat icon={CloudUpload} value={queue.length} label={t.statPhotos} accent="amber" />
                 </View>
             </GradientHeader>
-            <View style={styles.overlap}>{jobsLoaded ? <NextJobCard job={nextJob} onOpen={openJob} /> : <JobCardSkeleton />}</View>
+            {(jobsLoaded || jobsStatus === 'loading') && <View style={styles.overlap}>{jobsLoaded ? <NextJobCard job={nextJob} onOpen={openJob} /> : <JobCardSkeleton />}</View>}
             <View style={styles.tabs}>
                 <SegmentedTabs
                     value={segment}
@@ -123,23 +163,7 @@ export default function HomeScreen({ navigation }: Props) {
                         <JobCard job={item} pending={pendingFor(item.id).length} onPress={openJob} />
                     </View>
                 )}
-                ListEmptyComponent={
-                    jobsLoaded ? (
-                        <EmptyState
-                            icon={empty.icon}
-                            gradient={empty.gradient}
-                            orbits={[
-                                { icon: House, accent: 'sky' },
-                                { icon: Sparkles, accent: 'amber' },
-                                { icon: Bell, accent: 'coral' },
-                            ]}
-                            title={empty.title}
-                            body={empty.body}
-                        />
-                    ) : (
-                        <CardSkeletonList count={3} style={styles.skeletons} />
-                    )
-                }
+                ListEmptyComponent={renderEmptyState()}
                 initialNumToRender={8}
                 windowSize={7}
             />

@@ -3,7 +3,6 @@ import type { Role, SystemUser } from '../types';
 import type { AssignableUser } from '../types/tasks';
 import { fullName } from '../utils/ids';
 import { cached, CONFIG_TTL } from '../utils/memoryCache';
-import { isAdministratorRole } from '../utils/roles';
 import { taskListPermissionsOf } from '../utils/taskPermissions';
 import { typedCollection } from './firestore';
 
@@ -17,7 +16,7 @@ const readAssignableUsers = async (): Promise<AssignableUser[]> => {
     const roleIdsThatSeeTasks = new Set(
         rolesSnapshot.docs
             .map((roleDoc) => roleDoc.data())
-            .filter((role) => taskListPermissionsOf(role, isAdministratorRole(role)).canView)
+            .filter((role) => taskListPermissionsOf(role).canView)
             .map((role) => role.id),
     );
     return usersSnapshot.docs

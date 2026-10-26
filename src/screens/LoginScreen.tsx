@@ -14,6 +14,17 @@ import { errorCode } from '../utils/ids';
 import { styles } from './LoginScreen.styles';
 import { t } from '../constants/strings';
 
+const WRONG_CREDENTIAL_CODES = ['auth/invalid-credential', 'auth/wrong-password', 'auth/user-not-found', 'auth/invalid-email', 'auth/missing-password'];
+
+const authErrorMessage = (error: unknown): string => {
+    const code = errorCode(error);
+    if (WRONG_CREDENTIAL_CODES.includes(code)) return t.loginError;
+    if (code === 'auth/network-request-failed') return t.loginNetworkError;
+    if (code === 'auth/too-many-requests') return t.loginTooManyAttempts;
+    if (code === 'auth/user-disabled') return t.loginUserDisabled;
+    return t.loginUnknownError;
+};
+
 export default function LoginScreen() {
     const insets = useSafeAreaInsets();
     const [email, setEmail] = useState('');
@@ -33,9 +44,9 @@ export default function LoginScreen() {
         setLoading(true);
         authSignIn(email, password)
             .then(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined))
-            .catch((err) => {
-                console.error('Login error:', err);
-                fail(t.loginError);
+            .catch((error: unknown) => {
+                console.error('Login error:', error);
+                fail(authErrorMessage(error));
             })
             .then(() => setLoading(false));
     };
@@ -44,7 +55,7 @@ export default function LoginScreen() {
         if (!email.trim()) return fail(t.enterEmailFirst);
         resetPassword(email)
             .then(() => Alert.alert(t.appName, t.resetSent))
-            .catch((err) => Alert.alert(t.error, errorCode(err)));
+            .catch((error: unknown) => Alert.alert(t.error, authErrorMessage(error)));
     };
 
     return (

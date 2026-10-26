@@ -6,6 +6,7 @@ import { useCatalogs } from '../context/CatalogsContext';
 import { useAssignableUsers } from '../hooks/useAssignableUsers';
 import { useAttachments } from '../hooks/useAttachments';
 import { useProjects } from '../hooks/useProjects';
+import { useTaskAccess } from '../hooks/useTaskAccess';
 import { useTaskWriteActions } from '../hooks/useTaskWriteActions';
 import type { AttachmentSource, PickedAttachmentFile } from '../services/attachmentFilesService';
 import type { TaskAssignee, TaskComment } from '../types/tasks';
@@ -55,7 +56,9 @@ const parseDuration = (text: string): number => (/^\d+$/.test(text.trim()) ? Num
 const TaskForm = ({ initialValues, editingTaskId, onSaved }: Props) => {
     const { priorities } = useCatalogs();
     const { users: people, status: peopleStatus } = useAssignableUsers(true);
-    const { projects } = useProjects(true);
+    const { projectPermissions } = useTaskAccess();
+    const canViewProjects = !!projectPermissions?.canView;
+    const { projects } = useProjects(canViewProjects);
     const { actor, createTask, updateTask } = useTaskWriteActions();
     const { uploadProgress, pickFiles, uploadFiles } = useAttachments();
     const [values, setValues] = useState<TaskFormValues>(initialValues);
@@ -193,18 +196,20 @@ const TaskForm = ({ initialValues, editingTaskId, onSaved }: Props) => {
                     <TextField value={durationText} onChangeText={handleDurationChange} keyboardType="number-pad" invalid={!!errors.durationMinutes} maxLength={4} />
                 </FormSection>
 
-                <FormSection label={t.taskFieldProject}>
-                    <View style={styles.fieldRow}>
-                        <FieldButton
-                            icon={FolderKanban}
-                            value={values.projectId ? selectedProjectTitle : ''}
-                            placeholder={t.taskFieldProjectPlaceholder}
-                            onPress={() => setProjectPickerVisible(true)}
-                            accessibilityLabel={t.taskFieldProject}
-                            hasChevron
-                        />
-                    </View>
-                </FormSection>
+                {canViewProjects && (
+                    <FormSection label={t.taskFieldProject}>
+                        <View style={styles.fieldRow}>
+                            <FieldButton
+                                icon={FolderKanban}
+                                value={values.projectId ? selectedProjectTitle : ''}
+                                placeholder={t.taskFieldProjectPlaceholder}
+                                onPress={() => setProjectPickerVisible(true)}
+                                accessibilityLabel={t.taskFieldProject}
+                                hasChevron
+                            />
+                        </View>
+                    </FormSection>
+                )}
 
                 <FormSection label={t.taskFieldPriority}>
                     <View style={styles.choices}>

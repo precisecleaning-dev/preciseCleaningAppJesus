@@ -66,7 +66,6 @@ export interface UserTask {
 }
 
 export interface TaskListPermissions {
-    isAdmin: boolean;
     canView: boolean;
     canAdd: boolean;
     canEdit: boolean;

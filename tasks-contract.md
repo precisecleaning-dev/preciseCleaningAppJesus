@@ -190,7 +190,7 @@ export interface Permission {
 /** settings_roles/{roleId} */
 export interface Role {
   id: string;
-  name: string;            // "Administrator" = super admin (todo permitido)
+  name: string;            // Admin, Owner, Manager, System, Employee… (sin trato especial por nombre)
   description: string;
   permissions: Permission[];
 }
@@ -318,7 +318,7 @@ Una tarea **diaria** (repetición distinta de `monthly`) con fecha futura no se 
 **Importante:** las reglas de esta sección son la **propuesta** del repo web (`security/firestore.rules`), **todavía no publicadas** en Firebase. Las reglas activas se administran en la consola. Esa propuesta dependía de `user_access`, que no existe: antes de publicarla, la web tiene que reescribirla. Usa sus reglas de negocio (qué es "tarea propia", quién puede reasignar…) pero no supongas que ya están activas.
 
 **Cómo saber qué puede hacer el usuario:** su rol es `settings_roles/{system_users.roleId}` (la app ya lo carga en la sesión). En el móvil, todo pasa por `taskListPermissionsOf()` (`src/utils/taskPermissions.ts`).
-- Rol con `name === 'Administrator'`: todo permitido (aunque su módulo diga `scope: 'Own'`).
+- **Sin super admin por nombre** (decisión del 23/10/2026): todo sale de los flags; ningún rol se llama `Administrator`.
 - Módulo `Task List` del rol:
   - `canView`: puede abrir el Task list.
   - `canAdd`: crear tareas.
@@ -340,7 +340,7 @@ Una tarea **diaria** (repetición distinta de `monthly`) con fecha futura no se 
 - **Crear:** Projects Add. **Borrar:** Projects Delete.
 
 **Reglas de la pantalla que el móvil debe replicar** (las reglas no siempre las cubren):
-- Ver el Task list: `Task List.canView` (o Administrator).
+- Ver el Task list: `Task List.canView`.
 - Editar una tarea: Edit de Task List **o** estar asignado **o** haberla creado.
 - Reasignar: haberla creado, **o** tener Edit y no estar asignado a ella.
 - Completar: **no** si tiene `approval` sin `'approved'` (avisar "waiting for X's OK").

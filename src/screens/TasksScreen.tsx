@@ -23,9 +23,10 @@ import { useCompletionUndo } from '../hooks/useCompletionUndo';
 import { useNow } from '../hooks/useNow';
 import { useOpenTasks } from '../hooks/useOpenTasks';
 import { useProjects } from '../hooks/useProjects';
-import { useTaskAccess, type LoadStatus } from '../hooks/useTaskAccess';
+import { useTaskAccess } from '../hooks/useTaskAccess';
 import { useTaskTabOrder } from '../hooks/useTaskTabOrder';
 import type { RootStackParams, TabParams } from '../navigation/types';
+import type { LoadStatus } from '../types';
 import type { AssignableUser, TaskFilter, TaskListPermissions, UserTask } from '../types/tasks';
 import { fullName } from '../utils/ids';
 import { groupTasksByTab, type OpenTaskTabId } from '../utils/taskTabs';
@@ -86,7 +87,8 @@ const TasksScreen = ({ navigation }: Props) => {
     const canViewProjects = !!projectPermissions?.canView;
     const [segment, setSegment] = useState<ScreenSegment>('tasks');
     const { projects } = useProjects(canViewTasks);
-    const liveProjectTitleOf = (task: UserTask) => projects.find((project) => project.id === task.projectId)?.title ?? task.projectTitle;
+    const projectTitlesById = new Map(projects.map((project) => [project.id, project.title]));
+    const liveProjectTitleOf = (task: UserTask) => (task.projectId ? projectTitlesById.get(task.projectId) : undefined) ?? task.projectTitle;
     const tabOrder = useTaskTabOrder();
     const myFilter: TaskFilter = { kind: 'assignedTo', userId: user.id, userName: fullName(user) };
     const [filter, setFilter] = useState<TaskFilter>(myFilter);
@@ -95,7 +97,7 @@ const TasksScreen = ({ navigation }: Props) => {
     const { status: tasksStatus, tasks, retry: retryTasks } = useOpenTasks(filter, canViewTasks);
     const { pendingUndo, markDone, undo } = useCompletionUndo();
 
-    const canChoosePeople = !!permissions && (permissions.isAdmin || !permissions.isOwnScope);
+    const canChoosePeople = !!permissions && !permissions.isOwnScope;
     const canChooseFilter = !!permissions && (permissions.canAdd || canChoosePeople);
     const { status: peopleStatus, users: people } = useAssignableUsers(canChoosePeople);
 

@@ -1,8 +1,7 @@
 import { useSession } from '../context/SessionContext';
+import type { LoadStatus } from '../types';
 import type { ProjectPermissions, TaskListPermissions } from '../types/tasks';
 import { projectPermissionsOf, taskListPermissionsOf } from '../utils/taskPermissions';
-
-export type LoadStatus = 'loading' | 'ready' | 'offline' | 'error';
 
 interface TaskAccess {
     status: Extract<LoadStatus, 'loading' | 'ready'>;
@@ -12,8 +11,8 @@ interface TaskAccess {
 }
 
 export const useTaskAccess = (): TaskAccess => {
-    const { role, isSuperAdmin, configLoaded } = useSession();
+    const { role, configLoaded } = useSession();
     if (!configLoaded) return { status: 'loading', permissions: null, projectPermissions: null, canViewTasks: false };
-    const permissions = taskListPermissionsOf(role, isSuperAdmin);
-    return { status: 'ready', permissions, projectPermissions: projectPermissionsOf(role, isSuperAdmin), canViewTasks: permissions.canView };
+    const permissions = taskListPermissionsOf(role);
+    return { status: 'ready', permissions, projectPermissions: projectPermissionsOf(role), canViewTasks: permissions.canView };
 };

@@ -1,11 +1,10 @@
 import { collection, doc, getDocFromServer, onSnapshot, query, where, type DocumentData, type FirestoreDataConverter, type Query, type QuerySnapshot } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { asNullableText, asText } from '../utils/firestoreValues';
 import type { Repeat, TaskAssignee, TaskAttachment, TaskComment, TaskFilter, UserTask, UserTaskApproval, UserTaskApprovalStatus } from '../types/tasks';
 import { cached, CONFIG_TTL } from '../utils/memoryCache';
 import { isDocId } from './firestore';
 
-const asText = (value: unknown): string => (typeof value === 'string' ? value : '');
-const asNullableText = (value: unknown): string | null => (typeof value === 'string' && value !== '' ? value : null);
 const asList = <T>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
 
 const normalizeAssignees = (data: DocumentData): TaskAssignee[] => {

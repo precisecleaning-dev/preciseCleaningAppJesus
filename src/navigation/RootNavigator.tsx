@@ -45,12 +45,13 @@ const theme: Theme = {
 const TAB_ICONS = { Home: House, Tasks: ListChecks, Payroll: Wallet, Profile: User };
 
 function MainTabs() {
+    const { canViewPayroll } = useSession();
     const labels = { Home: t.tabHome, Tasks: t.tabTasks, Payroll: t.tabPayroll, Profile: t.tabProfile };
     return (
         <Tabs.Navigator screenOptions={{ headerShown: false }} tabBar={(props) => <TabBar {...props} icons={TAB_ICONS} labels={labels} />}>
             <Tabs.Screen name="Home" component={HomeScreen} />
             <Tabs.Screen name="Tasks" component={TasksScreen} />
-            <Tabs.Screen name="Payroll" component={PayrollScreen} />
+            {canViewPayroll && <Tabs.Screen name="Payroll" component={PayrollScreen} />}
             <Tabs.Screen name="Profile" component={ProfileScreen} />
         </Tabs.Navigator>
     );
@@ -76,7 +77,7 @@ export default function RootNavigator({ onboarded, finishOnboarding }: { onboard
     if (state === 'signingOut') return <LoadingScreen label={t.signingOut} />;
     if (state === 'checking' || state === 'loadingProfile' || onboarded === null) return <LoadingScreen label={t.loadingSession} />;
     if (state === 'signedOut') return onboarded ? <LoginScreen /> : <OnboardingScreen onFinish={finishOnboarding} />;
-    if (state === 'noProfile' || state === 'inactive' || state === 'noRole' || state === 'roleError') return <BlockedScreen reason={state} />;
+    if (state === 'noProfile' || state === 'profileError' || state === 'inactive' || state === 'noRole' || state === 'roleError') return <BlockedScreen reason={state} />;
 
     return (
         <CatalogsProvider>

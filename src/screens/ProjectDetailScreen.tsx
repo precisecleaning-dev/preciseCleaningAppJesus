@@ -45,7 +45,7 @@ const ProjectDetailScreen = ({ route, navigation }: Props) => {
     const { teams } = useCatalogs();
     const { permissions, projectPermissions, canViewTasks } = useTaskAccess();
     const { status, project, retry } = useProject(projectId);
-    const restrictToUserId = permissions && !permissions.isAdmin && permissions.isOwnScope ? user.id : null;
+    const restrictToUserId = permissions?.isOwnScope ? user.id : null;
     const { status: tasksStatus, tasks } = useOpenTasks({ kind: 'project', projectId, restrictToUserId }, canViewTasks);
     const { pendingUndo, markDone, undo } = useCompletionUndo();
     const { changeStatus, deleteProject } = useProjectWriteActions();

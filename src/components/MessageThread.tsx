@@ -1,12 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Send } from 'lucide-react-native';
 import { useState } from 'react';
-import { ActivityIndicator, TextInput, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { t } from '../constants/strings';
 import { colors, gradients } from '../theme/tokens';
 import { formatDateTime } from '../utils/dateFormat';
 import { styles } from './MessageThread.styles';
 import AppText from './ui/AppText';
+import TextField from './ui/TextField';
 import Touchable from './ui/Touchable';
 
 export interface ThreadMessage {
@@ -70,12 +71,12 @@ const MessageThread = ({ title, messages, emptyText, placeholder, canWrite, onSe
             ))}
             {canWrite && onSend && (
                 <View style={styles.composer}>
-                    <TextInput
+                    <TextField
+                        containerStyle={styles.inputContainer}
                         style={styles.input}
                         value={draft}
                         onChangeText={updateDraft}
                         placeholder={placeholder}
-                        placeholderTextColor={colors.textSoft}
                         multiline
                         maxLength={maxLength}
                         editable={!isSending}

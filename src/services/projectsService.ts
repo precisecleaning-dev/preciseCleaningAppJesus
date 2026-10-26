@@ -1,13 +1,12 @@
 import { collection, doc, onSnapshot, type DocumentData, type FirestoreDataConverter } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { asNullableText, asText } from '../utils/firestoreValues';
 import type { RepeatFrequency, TaskComment, TaskProject, TaskProjectColor, TaskProjectStatus } from '../types/tasks';
 import { isDocId } from './firestore';
 
 const PROJECT_COLORS: TaskProjectColor[] = ['blue', 'green', 'amber', 'purple', 'pink', 'teal', 'olive'];
 const PROJECT_STATUSES: TaskProjectStatus[] = ['active', 'done', 'archived'];
 
-const asText = (value: unknown): string => (typeof value === 'string' ? value : '');
-const asNullableText = (value: unknown): string | null => (typeof value === 'string' && value !== '' ? value : null);
 const asCount = (value: unknown): number => (Number.isFinite(Number(value)) ? Number(value) : 0);
 
 const normalizeProject = (id: string, data: DocumentData): TaskProject => ({

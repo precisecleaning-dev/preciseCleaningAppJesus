@@ -59,7 +59,7 @@ const AttachmentsSection = ({ attachments, pendingFiles = [], pendingNote, canUp
             onRemove: canRemove && onRemove ? () => onRemove(attachment) : undefined,
         })),
         ...pendingFiles.map((file, index) => ({
-            key: `pending-${file.localUri}`,
+            key: `pending-${file.pickId}`,
             name: file.name,
             type: file.mimeType,
             size: file.size,

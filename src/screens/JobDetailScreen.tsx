@@ -51,14 +51,16 @@ type Props = NativeStackScreenProps<RootStackParams, 'JobDetail'>;
 export default function JobDetailScreen({ route, navigation }: Props) {
     const insets = useSafeAreaInsets();
     const user = useCurrentUser();
-    const { isSuperAdmin, housesPermission, isElementVisible, isFieldReadOnly } = useSession();
+    const { housesPermission, isElementVisible, isFieldReadOnly } = useSession();
+    const canManageHouses = housesPermission?.canEdit === true;
     const { getJob, clientName, serviceName, statusOf, logLabel } = useJobs();
     const { teams, priorities } = useCatalogs();
     const { pendingFor } = usePhotoQueue();
-    const { mark, addNote, pendingNotes } = useOutbox();
+    const { mark, addNote, pendingNotes, withPendingMarks } = useOutbox();
     const keyboardOpen = useKeyboardVisible();
 
-    const job = getJob(route.params.jobId);
+    const storedJob = getJob(route.params.jobId);
+    const job = storedJob ? withPendingMarks(storedJob) : undefined;
 
     if (!job) {
         return (
@@ -86,14 +88,14 @@ export default function JobDetailScreen({ route, navigation }: Props) {
     const client = clientName(job);
     const started = !!job.employeeStartedAt;
     const finished = !!job.employeeFinishedAt;
-    const isEmployeeRole = !isSuperAdmin && !housesPermission?.canEdit;
+    const isEmployeeRole = !canManageHouses;
     const photosUnlocked = !isEmployeeRole || started || finished || (job.beforePhotos?.length || 0) + (job.afterPhotos?.length || 0) > 0;
     const missing = missingPhotoKinds(job);
     const queuedCount = pendingFor(job.id).length;
 
     const onStart = async () => {
         if (started) {
-            if (!canUndoMark(job.employeeStartedById, job.employeeStartedBy, user, isSuperAdmin)) return Alert.alert(t.undoStart, t.onlyOwnerCanUndo);
+            if (!canUndoMark(job.employeeStartedById, job.employeeStartedBy, user, canManageHouses)) return Alert.alert(t.undoStart, t.onlyOwnerCanUndo);
             if (await confirmAction(t.undoStart, t.confirmUndoStart, t.confirm, t.cancel)) mark(job, 'undoStart', label);
             return;
         }
@@ -102,7 +104,7 @@ export default function JobDetailScreen({ route, navigation }: Props) {
 
     const onFinish = async () => {
         if (finished) {
-            if (!canUndoMark(job.employeeFinishedById, job.employeeFinishedBy, user, isSuperAdmin)) return Alert.alert(t.undoFinish, t.onlyOwnerCanUndo);
+            if (!canUndoMark(job.employeeFinishedById, job.employeeFinishedBy, user, canManageHouses)) return Alert.alert(t.undoFinish, t.onlyOwnerCanUndo);
             if (await confirmAction(t.undoFinish, t.confirmUndoFinish, t.confirm, t.cancel)) mark(job, 'undoFinish', label);
             return;
         }

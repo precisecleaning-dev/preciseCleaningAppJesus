@@ -24,4 +24,5 @@ export const styles = StyleSheet.create({
     tabs: { paddingHorizontal: space.md, paddingTop: space.lg, paddingBottom: space.sm },
     item: { paddingHorizontal: space.md, paddingBottom: space.sm },
     skeletons: { paddingHorizontal: space.md },
+    errorState: { paddingHorizontal: space.md, gap: space.md, alignItems: 'center' },
 });

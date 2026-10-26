@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 import { fmt, t } from '../constants/strings';
-import { useOnline } from '../context/NetworkContext';
 import { discardPreparedFile, pickAttachmentFiles, prepareAttachmentFile, type AttachmentSource, type PickedAttachmentFile } from '../services/attachmentFilesService';
 import { removeAttachment, uploadAttachment } from '../services/attachmentsService';
 import type { AttachmentOwner } from '../utils/attachmentPaths';
@@ -9,6 +8,7 @@ import type { TaskAttachment } from '../types/tasks';
 import { confirmAction } from '../utils/confirm';
 import { errorCode } from '../utils/ids';
 import { MAX_ATTACHMENT_BYTES } from '../utils/fileSize';
+import { useGuardedWrite } from './useGuardedWrite';
 
 export interface UploadProgress {
     fileName: string;
@@ -52,7 +52,7 @@ const uploadSequentially = (owner: AttachmentOwner, files: PickedAttachmentFile[
     );
 
 export const useAttachments = () => {
-    const isOnline = useOnline();
+    const { warnIfOffline } = useGuardedWrite(t.attachmentsOffline);
     const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
 
     const pickFiles = (source: AttachmentSource): Promise<PickedAttachmentFile[]> =>
@@ -72,10 +72,7 @@ export const useAttachments = () => {
 
     const uploadFiles = (owner: AttachmentOwner, files: PickedAttachmentFile[]): Promise<UploadSummary> => {
         if (files.length === 0) return Promise.resolve({ uploaded: [], failedNames: [] });
-        if (!isOnline) {
-            Alert.alert(t.tasksOfflineTitle, t.attachmentsOffline);
-            return Promise.resolve({ uploaded: [], failedNames: files.map((file) => file.name) });
-        }
+        if (warnIfOffline()) return Promise.resolve({ uploaded: [], failedNames: files.map((file) => file.name) });
         setUploadProgress({ fileName: files[0].name, position: 1, total: files.length, progress: 0 });
         return uploadSequentially(owner, files, setUploadProgress).then((summary) => {
             setUploadProgress(null);
@@ -85,10 +82,7 @@ export const useAttachments = () => {
     };
 
     const confirmAndRemove = (owner: AttachmentOwner, attachment: TaskAttachment): Promise<boolean> => {
-        if (!isOnline) {
-            Alert.alert(t.tasksOfflineTitle, t.attachmentsOffline);
-            return Promise.resolve(false);
-        }
+        if (warnIfOffline()) return Promise.resolve(false);
         return confirmAction(t.attachmentRemoveConfirmTitle, fmt(t.attachmentRemoveConfirmBody, { name: attachment.name }), t.attachmentRemove, t.cancel, true).then(
             (isConfirmed) => {
                 if (!isConfirmed) return false;

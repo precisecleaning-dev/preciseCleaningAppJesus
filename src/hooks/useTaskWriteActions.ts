@@ -1,12 +1,12 @@
 import { Alert } from 'react-native';
 import { fmt, t } from '../constants/strings';
-import { useOnline } from '../context/NetworkContext';
-import { useCurrentUser } from '../context/SessionContext';
 import { addTaskComment, completeTask, createTask, deleteTask, TaskWriteError, undoCompleteTask, updateTask, type CompleteTaskResult } from '../services/taskWritesService';
 import type { TaskComment, UserTask } from '../types/tasks';
 import { confirmAction } from '../utils/confirm';
-import { errorCode, fullName } from '../utils/ids';
-import { buildTaskComment, canMarkDone, type TaskActor, type TaskFormValues } from '../utils/taskWrites';
+import { errorCode } from '../utils/ids';
+import { buildTaskComment, canMarkDone, type TaskFormValues } from '../utils/taskWrites';
+import { useCurrentActor } from './useCurrentActor';
+import { useGuardedWrite } from './useGuardedWrite';
 
 const approverNameOf = (task?: UserTask) => task?.approval?.approverUserName || t.taskApproverFallback;
 
@@ -22,24 +22,9 @@ const writeErrorMessage = (error: unknown, task?: UserTask): string => {
 };
 
 export const useTaskWriteActions = () => {
-    const user = useCurrentUser();
-    const isOnline = useOnline();
-    const actor: TaskActor = { userId: user.id, userName: fullName(user) };
-
-    const warnIfOffline = (): boolean => {
-        if (isOnline) return false;
-        Alert.alert(t.tasksOfflineTitle, t.taskOfflineWrite);
-        return true;
-    };
-
-    const runWrite = <Result>(write: () => Promise<Result>, task?: UserTask): Promise<Result | null> => {
-        if (warnIfOffline()) return Promise.resolve(null);
-        return write().catch((error: unknown) => {
-            console.error('Task write failed:', error);
-            Alert.alert(t.error, writeErrorMessage(error, task));
-            return null;
-        });
-    };
+    const actor = useCurrentActor();
+    const { warnIfOffline, runWrite: runGuardedWrite } = useGuardedWrite();
+    const runWrite = <Result>(write: () => Promise<Result>, task?: UserTask) => runGuardedWrite(write, (error) => writeErrorMessage(error, task));
 
     return {
         actor,

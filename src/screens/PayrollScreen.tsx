@@ -1,9 +1,10 @@
-import { Banknote, CircleDollarSign, HandCoins, House, Minus, Plus, Wallet } from 'lucide-react-native';
+import { Banknote, CircleDollarSign, HandCoins, House, Minus, Plus, RefreshCw, TriangleAlert, Wallet } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { SectionList, View } from 'react-native';
 import WeeklyBars, { type WeekBar } from '../components/WeeklyBars';
 import StatusScrim from '../components/StatusScrim';
 import AppText from '../components/ui/AppText';
+import Button from '../components/ui/Button';
 import Chip from '../components/ui/Chip';
 import EmptyState from '../components/ui/EmptyState';
 import GradientHeader from '../components/ui/GradientHeader';
@@ -12,6 +13,7 @@ import { CardSkeletonList } from '../components/ui/Skeleton';
 import { useJobs } from '../context/JobsContext';
 import { useOnline } from '../context/NetworkContext';
 import { usePayroll } from '../context/PayrollContext';
+import { useNow } from '../hooks/useNow';
 import { getPropertiesByIds } from '../services/propertiesService';
 import { paymentTime, recordTotal } from '../services/payrollService';
 import { colors, gradients } from '../theme/tokens';
@@ -24,8 +26,7 @@ const WEEKS = 6;
 
 const sumOf = (list: PayrollRecord[]) => list.reduce((sum, r) => sum + recordTotal(r), 0);
 
-function summarize(records: PayrollRecord[]) {
-    const now = new Date();
+function summarize(records: PayrollRecord[], now: Date) {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
     const thisWeek = weekStartOf(now.getTime());
     let pending = 0;
@@ -62,7 +63,7 @@ function summarize(records: PayrollRecord[]) {
 
 export default function PayrollScreen() {
     const { getJob, clientName, requestClients } = useJobs();
-    const { records, loaded } = usePayroll();
+    const { records, loaded, hasFailed, retry } = usePayroll();
     const online = useOnline();
     const [otherHouses, setOtherHouses] = useState<{ key: string; list: Property[] } | null>(null);
 
@@ -81,16 +82,18 @@ export default function PayrollScreen() {
     }, [missingKey, online]);
 
     const others = otherHouses?.list ?? [];
+    const otherHousesById = new Map(others.map((house) => [house.id, house]));
     const otherClients = others.map((h) => h.client).join('|');
     useEffect(() => {
         requestClients(otherClients.split('|'));
     }, [otherClients, requestClients]);
 
-    const { sections, totalPending, paidThisMonth, bars } = summarize(records);
+    const now = useNow();
+    const { sections, totalPending, paidThisMonth, bars } = summarize(records, now);
 
     const houseLabel = (r: PayrollRecord): string => {
         if (!r.propertyId) return r.extraNote || r.discountNote || t.adjustment;
-        const h = getJob(r.propertyId) ?? others.find((o) => o.id === r.propertyId);
+        const h = getJob(r.propertyId) ?? otherHousesById.get(r.propertyId);
         if (!h) return t.house;
         return h.address ? `${h.address} · ${clientName(h)}` : clientName(h);
     };
@@ -129,6 +132,28 @@ export default function PayrollScreen() {
             </View>
         </View>
     );
+
+    if (hasFailed) {
+        return (
+            <View style={styles.screen}>
+                {header}
+                <View style={styles.errorState}>
+                    <EmptyState
+                        icon={TriangleAlert}
+                        gradient={gradients.amber}
+                        orbits={[
+                            { icon: Banknote, accent: 'amber' },
+                            { icon: HandCoins, accent: 'violet' },
+                            { icon: CircleDollarSign, accent: 'sky' },
+                        ]}
+                        title={t.payrollErrorTitle}
+                        body={t.payrollErrorBody}
+                    />
+                    <Button variant="soft" label={t.tryAgain} onPress={retry} icon={<RefreshCw size={18} color={colors.primaryDark} />} />
+                </View>
+            </View>
+        );
+    }
 
     if (!loaded) {
         return (

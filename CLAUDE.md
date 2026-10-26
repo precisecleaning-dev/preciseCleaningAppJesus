@@ -132,6 +132,12 @@ mala práctica, señálala y propón la corrección; no la repliques.
 - **React Compiler activo**: no agregues `useMemo`, `useCallback` ni `memo`. Evita `try/finally`
   y `++` sobre variables capturadas dentro de componentes (el compilador se salta el componente).
 - Cada `useEffect` que se suscribe a algo devuelve su función de limpieza.
+- **Suscripciones en vivo:** toda lectura con `onSnapshot` en un hook o context usa
+  `useLiveSubscription` (`src/hooks/useLiveSubscription.ts`): da `status` (`LoadStatus`), `value`,
+  `hasFailed` y `retry`, y reintenta solo al volver la señal o la app al frente. No copies a mano
+  el patrón de "clave + error + intento".
+- **Escrituras desde la UI:** pasan por `useGuardedWrite` (`warnIfOffline`, `runWrite` con el mensaje
+  de error de cada módulo). El autor de una escritura sale de `useCurrentActor`.
 - Cada context expone un hook `useAlgo()` que lanza un error claro si se usa fuera de su provider.
 
 ### Datos (Firestore)
@@ -143,11 +149,16 @@ mala práctica, señálala y propón la corrección; no la repliques.
 - **Permisos:** salen siempre de `settings_roles`. Se escucha en vivo **solo el rol del usuario**
   (`settings_roles/{system_users.roleId}`, `subscribeRole` en `sessionService`), nunca la colección
   completa. Única excepción: la lista de personas asignables de Tasks (`assignableUsersService`,
-  solo para quien puede asignar), que necesita saber qué roles ven el Task list. `Administrator` (por nombre) = super admin. **Fallar cerrado:** sin rol (ni del
+  solo para quien puede asignar), que necesita saber qué roles ven el Task list. **No hay super admin por nombre de rol**: cada permiso
+  sale de los flags del módulo correspondiente (los roles reales son Admin, Owner, Manager, System,
+  Employee). **Fallar cerrado:** sin rol (ni del
   servidor ni guardado en el teléfono) la app no entra (`BlockedScreen` "noRole" / "roleError");
   nunca se supone un rol vacío con todo permitido.
 - **Un error nunca se convierte en una lista vacía**: distingue "cargando", "vacío" y "error".
-  Un listener que falla debe reintentarse, no dejar la pantalla vacía.
+  `listen()` exige `onError`; un listener que falla se reintenta al volver la señal o la app al
+  frente (`useForegroundRetry`, nunca en bucle) y la pantalla ofrece "Try again".
+- **Permisos de Casas fallan cerrado**: sin `Houses.canView` no hay casas (ni consulta); sin
+  `houses_form_config` (ni copia en el teléfono) la sesión muestra "Couldn't load your permissions".
 - Las escrituras que dependen del estado actual del documento (Start/Finish, deshacer) van en
   `runTransaction` y validan ese estado.
 - **La interfaz no es la seguridad.** Ocultar un botón no impide la acción: toda regla de
@@ -209,7 +220,7 @@ colección `user_access` que proponía la web no existe y no se usa.
 | Qué                 | Dónde                                                                                                                                                                                                                                                                           | Quién escribe        |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
 | Perfil del empleado | `system_users` (match por `email` en minúsculas)                                                                                                                                                                                                                                | Web                  |
-| Rol / permisos      | `settings_roles` (`Administrator` = super admin; módulo `Houses`: `scope`, `allowedStatusIds`, `readOnlyFields`, `canEdit`)                                                                                                                                                     | Web                  |
+| Rol / permisos      | `settings_roles` (todo por flags, sin super admin; `Houses`: `canView`, `allowedStatusIds`, `readOnlyFields`, `canEdit`; `Payroll.canView` muestra la pestaña)                                                                                                                                                     | Web                  |
 | Visibilidad por rol | `app_settings/houses_form_config` (`visibility[elementId] = roleId[]`, `readOnly`) — mismos ids que `HousesView.tsx` de la web: `btn_startJob`, `btn_markFinished`, `btn_takePhoto`, `btn_uploadPhoto`, `card_photos`, `btn_tabMedia`, `employeeNote`, `note`, `status_<id>`, … | Web                  |
 | Config de fotos     | `app_settings/photo_config`                                                                                                                                                                                                                                                     | Web                  |
 | Casas asignadas     | `properties` donde `assignedWorkers` contiene el id del usuario **o** `teamId` = su equipo                                                                                                                                                                                      | Web                  |
@@ -229,7 +240,10 @@ Finish exige Start + ≥1 foto Before y ≥1 After; solo quien marcó o un admin
   se guarda solo el nombre del archivo, porque en iOS la ruta de la app cambia con cada
   actualización). Los errores de conexión no cuentan como intento; espera creciente (30 s → 10 min).
 - Start/Finish y notas: `src/context/OutboxContext.tsx` (Firestore en RN no tiene caché
-  persistente). Las notas son idempotentes: no se duplican al reintentar.
+  persistente). Las notas son idempotentes: no se duplican al reintentar. Start/Finish guarda el
+  valor que vio el empleado (`guard`) y se aplica en transacción (`decideMark`): si alguien más
+  cambió la casa antes, no se pisa y se avisa. Mientras está en cola, `withPendingMarks` lo muestra.
+  La bitácora (`activity_logs`) de Start/Finish se escribe solo después de que el servidor confirma.
 - Las dos colas usan `src/hooks/usePersistentList.ts` y `src/hooks/useWhenOnline.ts` (envían al
   volver la señal y al volver la app al frente) y guardan el `userId`: nunca se sube nada de otro
   empleado que usó el mismo teléfono.
