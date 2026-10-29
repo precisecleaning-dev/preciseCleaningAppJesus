@@ -1,24 +1,15 @@
 import { collection, doc, getDocFromServer, onSnapshot, query, where, type DocumentData, type FirestoreDataConverter, type Query } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { asNullableText, asText } from '../utils/firestoreValues';
-import type { Repeat, TaskAssignee, TaskAttachment, TaskComment, TaskFilter, UserTask, UserTaskApproval, UserTaskApprovalStatus } from '../types/tasks';
+import { asFiniteNumber, asNullableText, asText } from '../utils/firestoreValues';
+import { asRepeat, asTaskApproval, asTaskAssignees, asTaskAttachments, asTaskComments } from '../utils/taskValues';
+import type { TaskAssignee, TaskFilter, UserTask } from '../types/tasks';
 import { cached, CONFIG_TTL } from '../utils/memoryCache';
 import { isDocId, subscribeMerged } from './firestore';
 
-const asList = <T>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
-
 const normalizeAssignees = (data: DocumentData): TaskAssignee[] => {
-    if (Array.isArray(data.assignees)) return data.assignees as TaskAssignee[];
+    if (Array.isArray(data.assignees)) return asTaskAssignees(data.assignees);
     if (typeof data.assigneeUserId === 'string' && data.assigneeUserId) return [{ userId: data.assigneeUserId, userName: asText(data.assigneeUserName) }];
     return [];
-};
-
-const normalizeApprovalStatus = (status: unknown): UserTaskApprovalStatus => (status === 'changes' ? 'changes_requested' : (status as UserTaskApprovalStatus));
-
-const normalizeApproval = (approval: unknown): UserTaskApproval | null => {
-    if (!approval || typeof approval !== 'object') return null;
-    const stored = approval as UserTaskApproval;
-    return { ...stored, status: normalizeApprovalStatus(stored.status), note: asText(stored.note) };
 };
 
 const normalizeTask = (id: string, data: DocumentData): UserTask => ({
@@ -27,17 +18,17 @@ const normalizeTask = (id: string, data: DocumentData): UserTask => ({
     assignees: normalizeAssignees(data),
     dueDate: asText(data.dueDate),
     dueTime: asText(data.dueTime),
-    durationMinutes: Number(data.durationMinutes) || 0,
+    durationMinutes: asFiniteNumber(data.durationMinutes),
     priorityId: asNullableText(data.priorityId),
     projectId: asNullableText(data.projectId),
     projectTitle: asNullableText(data.projectTitle),
-    repeat: data.repeat && typeof data.repeat === 'object' ? (data.repeat as Repeat) : null,
-    approval: normalizeApproval(data.approval),
+    repeat: asRepeat(data.repeat),
+    approval: asTaskApproval(data.approval),
     status: data.status === 'done' ? 'done' : 'open',
     doneAt: asNullableText(data.doneAt),
     doneByUserId: asNullableText(data.doneByUserId),
-    comments: asList<TaskComment>(data.comments),
-    attachments: asList<TaskAttachment>(data.attachments),
+    comments: asTaskComments(data.comments),
+    attachments: asTaskAttachments(data.attachments),
     createdByUserId: asText(data.createdByUserId),
     createdByUserName: asText(data.createdByUserName),
     createdAt: asText(data.createdAt),

@@ -3,11 +3,12 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
 import { useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, View, type TextInput } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, View, type TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppText from '../components/ui/AppText';
 import Button from '../components/ui/Button';
 import TextField from '../components/ui/TextField';
+import Touchable from '../components/ui/Touchable';
 import { resetPassword, signIn as authSignIn } from '../services/sessionService';
 import { colors, gradients } from '../theme/tokens';
 import { errorCode } from '../utils/ids';
@@ -25,34 +26,34 @@ const authErrorMessage = (error: unknown): string => {
     return t.loginUnknownError;
 };
 
-export default function LoginScreen() {
+const LoginScreen = () => {
     const insets = useSafeAreaInsets();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [show, setShow] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const passRef = useRef<TextInput>(null);
+    const [isPasswordVisible, setPasswordVisible] = useState(false);
+    const [isSigningIn, setSigningIn] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
+    const passwordRef = useRef<TextInput>(null);
 
-    const fail = (msg: string) => {
-        setError(msg);
+    const showError = (message: string) => {
+        setErrorMessage(message);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
     };
 
-    const signIn = () => {
-        setError('');
-        setLoading(true);
+    const handleSignInPress = () => {
+        setErrorMessage('');
+        setSigningIn(true);
         authSignIn(email, password)
             .then(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined))
             .catch((error: unknown) => {
                 console.error('Login error:', error);
-                fail(authErrorMessage(error));
+                showError(authErrorMessage(error));
             })
-            .then(() => setLoading(false));
+            .then(() => setSigningIn(false));
     };
 
-    const reset = () => {
-        if (!email.trim()) return fail(t.enterEmailFirst);
+    const handleForgotPasswordPress = () => {
+        if (!email.trim()) return showError(t.enterEmailFirst);
         resetPassword(email)
             .then(() => Alert.alert(t.appName, t.resetSent))
             .catch((error: unknown) => Alert.alert(t.error, authErrorMessage(error)));
@@ -94,44 +95,50 @@ export default function LoginScreen() {
                         returnKeyType="next"
                         value={email}
                         onChangeText={setEmail}
-                        onSubmitEditing={() => passRef.current?.focus()}
-                        invalid={!!error}
+                        onSubmitEditing={() => passwordRef.current?.focus()}
+                        invalid={!!errorMessage}
                         accessibilityLabel={t.email}
                     />
                     <TextField
-                        ref={passRef}
+                        ref={passwordRef}
                         icon={Lock}
                         placeholder={t.password}
-                        secureTextEntry={!show}
+                        secureTextEntry={!isPasswordVisible}
                         autoComplete="password"
                         textContentType="password"
                         returnKeyType="go"
                         value={password}
                         onChangeText={setPassword}
-                        onSubmitEditing={signIn}
-                        invalid={!!error}
+                        onSubmitEditing={handleSignInPress}
+                        invalid={!!errorMessage}
                         accessibilityLabel={t.password}
                         right={
-                            <Pressable onPress={() => setShow((v) => !v)} hitSlop={10} accessibilityRole="button" accessibilityLabel={show ? t.hidePassword : t.showPassword}>
-                                {show ? <EyeOff size={20} color={colors.textMuted} /> : <Eye size={20} color={colors.textMuted} />}
-                            </Pressable>
+                            <Touchable
+                                onPress={() => setPasswordVisible((isVisible) => !isVisible)}
+                                hitSlop={10}
+                                accessibilityLabel={isPasswordVisible ? t.hidePassword : t.showPassword}
+                            >
+                                {isPasswordVisible ? <EyeOff size={20} color={colors.textMuted} /> : <Eye size={20} color={colors.textMuted} />}
+                            </Touchable>
                         }
                     />
-                    {!!error && (
+                    {!!errorMessage && (
                         <View>
                             <AppText variant="small" tone="danger">
-                                {error}
+                                {errorMessage}
                             </AppText>
                         </View>
                     )}
-                    <Button label={t.signIn} onPress={signIn} loading={loading} disabled={!email || !password} size="lg" />
-                    <Pressable onPress={reset} accessibilityRole="link" style={styles.link}>
+                    <Button label={t.signIn} onPress={handleSignInPress} loading={isSigningIn} disabled={!email || !password} size="lg" />
+                    <Touchable onPress={handleForgotPasswordPress} accessibilityRole="link" style={styles.link}>
                         <AppText variant="bodyStrong" tone="brand">
                             {t.forgotPassword}
                         </AppText>
-                    </Pressable>
+                    </Touchable>
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
     );
-}
+};
+
+export default LoginScreen;

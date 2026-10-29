@@ -1,4 +1,4 @@
-import { signOut as firebaseSignOut, sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
+import { onAuthStateChanged, signOut as firebaseSignOut, sendPasswordResetEmail, signInWithEmailAndPassword, type User } from 'firebase/auth';
 import { doc, getDocFromServer, limit, onSnapshot, query, where } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import type { FormVisibilityConfig, Role, SystemUser } from '../types';
@@ -8,6 +8,11 @@ import { isDocId, typedCollection } from './firestore';
 export const signIn = (email: string, password: string) => signInWithEmailAndPassword(auth, email.trim(), password);
 export const resetPassword = (email: string) => sendPasswordResetEmail(auth, email.trim());
 export const signOut = () => firebaseSignOut(auth);
+
+export type AuthUser = User;
+
+/** Signed-in Firebase user (or null). Fires once with the restored session, then on every sign in/out. */
+export const subscribeAuthUser = (onChange: (authUser: AuthUser | null) => void): (() => void) => onAuthStateChanged(auth, onChange);
 
 export const subscribeProfile = (email: string, onData: (user: SystemUser | null) => void, onError: (error: unknown) => void): (() => void) =>
     onSnapshot(

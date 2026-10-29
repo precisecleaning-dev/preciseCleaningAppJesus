@@ -1,14 +1,13 @@
 import { collection, doc, documentId, onSnapshot, query, where, type DocumentData, type FirestoreDataConverter, type Query } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { chunkList } from '../utils/chunkList';
-import { asNullableText, asText } from '../utils/firestoreValues';
-import type { ProjectScope, RepeatFrequency, TaskComment, TaskProject, TaskProjectColor, TaskProjectStatus } from '../types/tasks';
+import { asFiniteNumber, asNullableText, asText } from '../utils/firestoreValues';
+import { asRepeatFrequency, asTaskComments } from '../utils/taskValues';
+import type { ProjectScope, TaskProject, TaskProjectColor, TaskProjectStatus } from '../types/tasks';
 import { FIRESTORE_IN_LIMIT, isDocId, subscribeMerged } from './firestore';
 
 const PROJECT_COLORS: TaskProjectColor[] = ['blue', 'green', 'amber', 'purple', 'pink', 'teal', 'olive'];
 const PROJECT_STATUSES: TaskProjectStatus[] = ['active', 'done', 'archived'];
-
-const asCount = (value: unknown): number => (Number.isFinite(Number(value)) ? Number(value) : 0);
 
 const normalizeProject = (id: string, data: DocumentData): TaskProject => ({
     id,
@@ -19,13 +18,13 @@ const normalizeProject = (id: string, data: DocumentData): TaskProject => ({
     teamId: asNullableText(data.teamId),
     startDate: asText(data.startDate),
     dueDate: asText(data.dueDate),
-    repeat: typeof data.repeat === 'string' ? (data.repeat as RepeatFrequency) : null,
-    color: PROJECT_COLORS.includes(data.color) ? (data.color as TaskProjectColor) : null,
-    status: PROJECT_STATUSES.includes(data.status) ? (data.status as TaskProjectStatus) : 'active',
-    taskCount: asCount(data.taskCount),
-    doneCount: asCount(data.doneCount),
-    openMinutes: asCount(data.openMinutes),
-    comments: Array.isArray(data.comments) ? (data.comments as TaskComment[]) : [],
+    repeat: asRepeatFrequency(data.repeat),
+    color: PROJECT_COLORS.find((color) => color === data.color) ?? null,
+    status: PROJECT_STATUSES.find((status) => status === data.status) ?? 'active',
+    taskCount: asFiniteNumber(data.taskCount),
+    doneCount: asFiniteNumber(data.doneCount),
+    openMinutes: asFiniteNumber(data.openMinutes),
+    comments: asTaskComments(data.comments),
     doneAt: asNullableText(data.doneAt),
     createdByUserId: asText(data.createdByUserId),
     createdAt: asText(data.createdAt),

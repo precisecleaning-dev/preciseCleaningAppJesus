@@ -145,6 +145,10 @@ mala práctica, señálala y propón la corrección; no la repliques.
 
 - **Los componentes y contexts no llaman a Firebase**: todo pasa por `src/services/*`.
 - Cada colección se tipa una vez con `typedCollection<T>()` (`src/services/firestore.ts`).
+- **Los datos de Firestore no se suponen completos** (los escriben dos apps y la consola): se leen con
+  `src/utils/firestoreValues.ts` (`asText`, `isRecord`, …) y, en Tareas y Proyectos, `src/utils/taskValues.ts`;
+  nunca con `as`. Lo que no se puede mostrar se descarta en vez de romper la pantalla. Los adjuntos se conservan
+  idénticos (para `arrayRemove`) y `approval` / `repeat` conservan campos desconocidos (se reescriben).
 - `onSnapshot` solo para lo que cambia mientras se mira (perfil, **rol del usuario**, casas,
   tareas, payroll). Catálogos y configuración: lectura única + `cached()` (`src/utils/memoryCache.ts`).
 - **Permisos:** salen siempre de `settings_roles`. Se escucha en vivo **solo el rol del usuario**

@@ -1,5 +1,23 @@
 # code-notes.md — decisiones y pendientes (app móvil)
 
+## 2026-10-28 · Refactors de revisión (datos de Firestore, Auth, Touchable)
+
+- **Bug arreglado:** el historial de aprobación hacía `comment.text.trim()`; un comentario sin `text` en
+  Firestore tiraba el detalle de la tarea. Causa de fondo: los normalizadores usaban `as` sobre datos externos.
+- **`src/utils/taskValues.ts`** (puro, probado con datos rotos): comentarios, asignados, adjuntos, `approval` y
+  `repeat` se validan al leer (`tasksService`, `projectsService`). Decisiones:
+  - adjuntos incompletos se descartan, los válidos se conservan **idénticos** (`arrayRemove` necesita el mismo objeto);
+  - `approval` con status desconocido se lee como `'draft'` (sigue bloqueando completar: falla cerrado);
+  - `repeat` con frecuencia desconocida se ignora (no se genera la siguiente); `timesLeft` ausente sigue ausente;
+  - `approval` y `repeat` conservan campos desconocidos porque se reescriben a partir de lo leído;
+  - `durationMinutes` igual que antes (sin redondear: cambiarlo desajustaría los contadores del proyecto).
+- **Auth:** `onAuthStateChanged` pasó de `SessionContext` a `sessionService.subscribeAuthUser`; ya no hay imports
+  de Firebase fuera de `services/` y `config/`.
+- **`Touchable`** en vez de `Pressable` en `LoginScreen`, `NotificationToast` y `PhotoViewer` (y esos archivos a
+  funciones flecha y nombres claros). Efecto visible: esos botones ahora dan vibración ligera y opacidad al tocar.
+- **Pendiente (fuera de este alcance):** quedan `as` en `firestore.ts` (convertidor genérico de las demás
+  colecciones), `houses_form_config`, `photo_config` (mitigado por `compressionSettingsOf`) y `jobsService`.
+
 ## 2026-10-28 · Correos de Tasks (parte 1 de 4: tarea asignada)
 
 - **Dónde:** Cloud Functions en `app-jesus/functions`, codebase `mobile` (decisión de Antonio: que la app no

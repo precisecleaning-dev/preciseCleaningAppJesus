@@ -1,11 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { onAuthStateChanged, type User } from 'firebase/auth';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { auth } from '../config/firebase';
 import { useForegroundRetry } from '../hooks/useForegroundRetry';
 import { useWhenOnline } from '../hooks/useWhenOnline';
 import { resetCustomers } from '../services/customersService';
-import { loadFormConfig, signOut, subscribeProfile, subscribeRole } from '../services/sessionService';
+import { loadFormConfig, signOut, subscribeAuthUser, subscribeProfile, subscribeRole, type AuthUser } from '../services/sessionService';
 import type { FormVisibilityConfig, Permission, Role, SystemUser } from '../types';
 import { clearMemoryCache } from '../utils/memoryCache';
 
@@ -16,7 +14,7 @@ type RoleStatus = 'loading' | 'ready' | 'missing' | 'error';
 interface SessionValue {
     state: SessionState;
     configLoaded: boolean;
-    authUser: User | null;
+    authUser: AuthUser | null;
     user: SystemUser | null;
     role: Role | null;
     housesPermission: Permission | undefined;
@@ -57,7 +55,7 @@ const roleStatusOf = (roleId: string, roleSnapshot: RoleSnapshot | null, failedR
 };
 
 export const SessionProvider = ({ children }: SessionProviderProps) => {
-    const [authUser, setAuthUser] = useState<User | null>(null);
+    const [authUser, setAuthUser] = useState<AuthUser | null>(null);
     const [authChecked, setAuthChecked] = useState(false);
     const [signingOut, setSigningOut] = useState(false);
     const [signingIn, setSigningIn] = useState(false);
@@ -78,7 +76,7 @@ export const SessionProvider = ({ children }: SessionProviderProps) => {
 
     useEffect(() => {
         let checked = false;
-        return onAuthStateChanged(auth, (firebaseUser) => {
+        return subscribeAuthUser((firebaseUser) => {
             if (checked && firebaseUser) {
                 const login = Symbol('login');
                 lastLogin.current = login;
