@@ -40,17 +40,20 @@ const dateTabOf = (task: UserTask, todayYmd: YmdDate, sundayYmd: YmdDate): OpenT
 
 const byNewestFirst = (first: UserTask, second: UserTask) => second.createdAt.localeCompare(first.createdAt);
 
-export const groupTasksByTab = (tasks: UserTask[], now: Date): Record<OpenTaskTabId, UserTask[]> => {
+/** `tasksToApprove` (waiting for MY OK, not assigned to me) only go in the Approval tab, like the web. */
+export const groupTasksByTab = (tasks: UserTask[], now: Date, tasksToApprove: UserTask[] = []): Record<OpenTaskTabId, UserTask[]> => {
     const todayYmd = toLocalYmd(now);
     const sundayYmd = endOfWeekYmd(now);
     const groups: Record<OpenTaskTabId, UserTask[]> = { all: [], overdue: [], daily: [], approval: [], week: [], later: [], nodate: [] };
 
+    const listedIds = new Set(tasks.map((task) => task.id));
     tasks.forEach((task) => {
         groups.all.push(task);
         if (needsApproval(task)) groups.approval.push(task);
         const dateTab = dateTabOf(task, todayYmd, sundayYmd);
         if (dateTab) groups[dateTab].push(task);
     });
+    groups.approval.push(...tasksToApprove.filter((task) => !listedIds.has(task.id)));
 
     OPEN_TAB_IDS.forEach((tabId) => groups[tabId].sort(byNewestFirst));
     return groups;

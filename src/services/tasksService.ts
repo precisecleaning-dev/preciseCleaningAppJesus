@@ -1,9 +1,9 @@
-import { collection, doc, getDocFromServer, onSnapshot, query, where, type DocumentData, type FirestoreDataConverter, type Query, type QuerySnapshot } from 'firebase/firestore';
+import { collection, doc, getDocFromServer, onSnapshot, query, where, type DocumentData, type FirestoreDataConverter, type Query } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { asNullableText, asText } from '../utils/firestoreValues';
 import type { Repeat, TaskAssignee, TaskAttachment, TaskComment, TaskFilter, UserTask, UserTaskApproval, UserTaskApprovalStatus } from '../types/tasks';
 import { cached, CONFIG_TTL } from '../utils/memoryCache';
-import { isDocId } from './firestore';
+import { isDocId, subscribeMerged } from './firestore';
 
 const asList = <T>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
 
@@ -76,31 +76,21 @@ const openTaskQueriesFor = (filter: TaskFilter): Query<UserTask>[] => {
 
 const isAssignedOnlyTo = (task: UserTask, userId: string) => task.assignees.length === 1 && task.assignees[0].userId === userId;
 
-export const subscribeOpenTasks = (filter: TaskFilter, onUpdate: (update: OpenTasksUpdate) => void, onError: (error: unknown) => void): (() => void) => {
-    const queries = openTaskQueriesFor(filter);
-    const latestSnapshots: (QuerySnapshot<UserTask> | null)[] = queries.map(() => null);
-
-    const emitMerged = () => {
-        if (latestSnapshots.some((snapshot) => snapshot === null)) return;
-        const tasksById = new Map<string, UserTask>();
-        latestSnapshots.forEach((snapshot) => snapshot?.docs.forEach((taskDoc) => tasksById.set(taskDoc.id, taskDoc.data())));
-        const tasks = [...tasksById.values()].filter((task) => filter.kind !== 'createdBy' || !isAssignedOnlyTo(task, filter.userId));
-        onUpdate({ tasks, isFromCache: latestSnapshots.some((snapshot) => snapshot?.metadata.fromCache) });
-    };
-
-    const unsubscribers = queries.map((taskQuery, queryIndex) =>
-        onSnapshot(
-            taskQuery,
-            (snapshot) => {
-                latestSnapshots[queryIndex] = snapshot;
-                emitMerged();
-            },
-            onError,
-        ),
+export const subscribeOpenTasks = (filter: TaskFilter, onUpdate: (update: OpenTasksUpdate) => void, onError: (error: unknown) => void): (() => void) =>
+    subscribeMerged(
+        openTaskQueriesFor(filter),
+        ({ rows, isFromCache }) => onUpdate({ tasks: rows.filter((task) => filter.kind !== 'createdBy' || !isAssignedOnlyTo(task, filter.userId)), isFromCache }),
+        onError,
     );
 
-    return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
-};
+// Same query as the web (useApprovalQueue): equalities only, no composite index. Tasks that are no
+// longer open are dropped here instead of adding a third filter.
+export const subscribeTasksToApprove = (userId: string, onUpdate: (update: OpenTasksUpdate) => void, onError: (error: unknown) => void): (() => void) =>
+    subscribeMerged(
+        [query(userTasks(), where('approval.approverUserId', '==', userId), where('approval.status', '==', 'pending'))],
+        ({ rows, isFromCache }) => onUpdate({ tasks: rows.filter((task) => task.status === 'open'), isFromCache }),
+        onError,
+    );
 
 export const taskDocument = (taskId: string) => doc(userTasks(), taskId);
 

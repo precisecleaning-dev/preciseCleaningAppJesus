@@ -1,4 +1,4 @@
-import { collection, onSnapshot, type DocumentData, type FirestoreDataConverter, type Query } from 'firebase/firestore';
+import { collection, onSnapshot, type DocumentData, type FirestoreDataConverter, type Query, type QuerySnapshot } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 function converter<T extends { id: string }>(): FirestoreDataConverter<T> {
@@ -25,3 +25,33 @@ export const listen = <T>(listenQuery: Query<T>, onData: (rows: T[]) => void, on
             onError(error);
         },
     );
+
+export interface MergedUpdate<T> {
+    rows: T[];
+    isFromCache: boolean;
+}
+
+/** Listens to several queries and emits their rows merged by document id, once every query has answered. */
+export const subscribeMerged = <T>(queries: Query<T>[], onUpdate: (update: MergedUpdate<T>) => void, onError: (error: unknown) => void): (() => void) => {
+    const latestSnapshots: (QuerySnapshot<T> | null)[] = queries.map(() => null);
+
+    const emitMerged = () => {
+        if (latestSnapshots.some((snapshot) => snapshot === null)) return;
+        const rowsById = new Map<string, T>();
+        latestSnapshots.forEach((snapshot) => snapshot?.docs.forEach((rowDoc) => rowsById.set(rowDoc.id, rowDoc.data())));
+        onUpdate({ rows: [...rowsById.values()], isFromCache: latestSnapshots.some((snapshot) => snapshot?.metadata.fromCache) });
+    };
+
+    const unsubscribers = queries.map((mergedQuery, queryIndex) =>
+        onSnapshot(
+            mergedQuery,
+            (snapshot) => {
+                latestSnapshots[queryIndex] = snapshot;
+                emitMerged();
+            },
+            onError,
+        ),
+    );
+
+    return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
+};

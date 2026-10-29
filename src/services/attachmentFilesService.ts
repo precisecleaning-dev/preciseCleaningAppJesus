@@ -1,7 +1,6 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
-import { Image } from 'react-native';
 import type { PhotoConfig } from '../types';
 import { makeId } from '../utils/ids';
 import type { PreparedAttachmentFile } from './attachmentsService';
@@ -15,8 +14,6 @@ export interface PickedAttachmentFile {
     name: string;
     mimeType: string;
     size: number;
-    width: number;
-    height: number;
 }
 
 export type AttachmentPickResult = { files: PickedAttachmentFile[] } | { denied: true };
@@ -49,8 +46,6 @@ const fromImagePicker = (result: ImagePicker.ImagePickerResult): PickedAttachmen
               name: asset.fileName || fallbackPhotoName(index),
               mimeType: asset.mimeType || 'image/jpeg',
               size: asset.fileSize ?? 0,
-              width: asset.width,
-              height: asset.height,
           }));
 
 const fromDocumentPicker = (result: DocumentPicker.DocumentPickerResult): PickedAttachmentFile[] =>
@@ -62,8 +57,6 @@ const fromDocumentPicker = (result: DocumentPicker.DocumentPickerResult): Picked
               name: asset.name,
               mimeType: asset.mimeType || UNKNOWN_MIME_TYPE,
               size: asset.size ?? 0,
-              width: 0,
-              height: 0,
           }));
 
 export const pickAttachmentFiles = async (source: AttachmentSource): Promise<AttachmentPickResult> => {
@@ -80,12 +73,6 @@ export const pickAttachmentFiles = async (source: AttachmentSource): Promise<Att
     };
 };
 
-const imageSizeOf = (localUri: string): Promise<{ width: number; height: number }> =>
-    Image.getSize(localUri).catch((error: unknown) => {
-        console.error('Could not read image size, compressing without resizing:', error);
-        return { width: 0, height: 0 };
-    });
-
 const sizeOf = (localUri: string, fallbackSize: number): number => {
     const size = new File(localUri).size;
     return size > 0 ? size : fallbackSize;
@@ -100,8 +87,7 @@ export const prepareAttachmentFile = async (picked: PickedAttachmentFile): Promi
         isTemporaryCopy: false,
     };
     if (!isImageType(picked.mimeType)) return original;
-    const { width, height } = picked.width > 0 && picked.height > 0 ? picked : await imageSizeOf(picked.localUri);
-    return compressPhoto({ uri: picked.localUri, width, height }, ATTACHMENT_IMAGE_SETTINGS)
+    return compressPhoto(picked.localUri, ATTACHMENT_IMAGE_SETTINGS)
         .then((compressedUri): ReadyAttachmentFile => ({ localUri: compressedUri, name: picked.name, type: 'image/jpeg', size: sizeOf(compressedUri, 0), isTemporaryCopy: true }))
         .catch((error: unknown) => {
             console.error('Image compression failed, uploading the original:', error);

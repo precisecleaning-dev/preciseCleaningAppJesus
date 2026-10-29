@@ -3,17 +3,21 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { usePersistentList } from '../hooks/usePersistentList';
 import { useWhenOnline } from '../hooks/useWhenOnline';
 import { logActivity } from '../services/activityLog';
-import { compressPhoto, discard, uploadErrorKind, uploadPhoto, type PickedPhoto } from '../services/photoService';
+import { compressPhoto, discard, discardPickerCopy, uploadErrorKind, uploadPhotoFile, type UploadErrorKind } from '../services/photoService';
+import { addPhotoUrl } from '../services/propertiesService';
 import type { PhotoKind } from '../types';
 import { errorCode, makeId } from '../utils/ids';
 import { useCatalogs } from './CatalogsContext';
 import { checkOnline } from './NetworkContext';
 import { useCurrentUser } from './SessionContext';
 
+const STORAGE_KEY = 'pc_crew_photo_queue_v1';
+const QUEUE_DIRECTORY = 'pending-photos';
 const MAX_ATTEMPTS = 5;
 const BACKOFF_MS = [30_000, 60_000, 120_000, 300_000, 600_000];
+const FILE_MISSING = 'file-missing';
 
-interface JobRef {
+export interface PhotoTarget {
     propertyId: string;
     clientName: string;
     address: string;
@@ -21,150 +25,228 @@ interface JobRef {
     kind: PhotoKind;
 }
 
-export interface QueuedPhoto extends JobRef {
+export interface QueuedPhoto extends PhotoTarget {
     id: string;
     userId: string;
     fileName: string;
     attempts: number;
     lastError?: string;
     blocked?: boolean;
+    /** Set once the file is in Storage: a retry only links it to the house, it never uploads it again. */
+    uploadedUrl?: string;
 }
 
-type Tally = Map<string, { before: number; after: number; label: string }>;
+interface UploadProgress {
+    id: string;
+    progress: number;
+}
+
+type UploadSummary = Map<string, { before: number; after: number; label: string }>;
+
+type UploadOutcome = { isUploaded: true } | { isUploaded: false; errorKind: UploadErrorKind; code: string };
 
 interface PhotoQueueValue {
     queue: QueuedPhoto[];
-    current: { id: string; progress: number } | null;
-    enqueue: (job: JobRef, photos: PickedPhoto[]) => Promise<void>;
+    current: UploadProgress | null;
+    enqueue: (target: PhotoTarget, photoUris: string[]) => Promise<void>;
     retryAll: () => void;
     pendingFor: (propertyId: string, kind?: PhotoKind) => QueuedPhoto[];
-    localUri: (q: QueuedPhoto) => string;
+    needsManualRetry: (queuedPhoto: QueuedPhoto) => boolean;
+    localUri: (queuedPhoto: QueuedPhoto) => string;
+}
+
+interface PhotoQueueProviderProps {
+    children: ReactNode;
 }
 
 const PhotoQueueContext = createContext<PhotoQueueValue | null>(null);
 
-function queuedFile(fileName: string): File {
-    const dir = new Directory(Paths.document, 'pending-photos');
-    if (!dir.exists) dir.create({ intermediates: true });
-    return new File(dir, fileName);
-}
+// Only the file name is stored: on iOS the app folder changes with every update.
+const queuedFile = (fileName: string): File => {
+    const directory = new Directory(Paths.document, QUEUE_DIRECTORY);
+    if (!directory.exists) directory.create({ intermediates: true });
+    return new File(directory, fileName);
+};
 
-async function uploadOne(item: QueuedPhoto, fileUri: string, onProgress: (p: number) => void): Promise<'ok' | { kind: ReturnType<typeof uploadErrorKind>; code: string }> {
+const needsManualRetry = (queuedPhoto: QueuedPhoto): boolean => !!queuedPhoto.blocked || queuedPhoto.attempts >= MAX_ATTEMPTS;
+
+const sendQueuedPhoto = async (queuedPhoto: QueuedPhoto, onStored: (uploadedUrl: string) => void, onProgress: (progress: number) => void): Promise<UploadOutcome> => {
     try {
-        await uploadPhoto({ ...item, fileUri }, onProgress);
-        return 'ok';
-    } catch (err) {
-        console.error('Error subiendo foto:', err);
-        return { kind: uploadErrorKind(err), code: errorCode(err) };
+        let photoUrl = queuedPhoto.uploadedUrl;
+        if (!photoUrl) {
+            photoUrl = await uploadPhotoFile({ ...queuedPhoto, fileUri: queuedFile(queuedPhoto.fileName).uri }, onProgress);
+            onStored(photoUrl);
+        }
+        await addPhotoUrl(queuedPhoto.propertyId, queuedPhoto.kind, photoUrl);
+        return { isUploaded: true };
+    } catch (error) {
+        console.error('Error uploading photo:', error);
+        return { isUploaded: false, errorKind: uploadErrorKind(error), code: errorCode(error) };
     }
-}
+};
 
-export function PhotoQueueProvider({ children }: { children: ReactNode }) {
+const countUpload = (summary: UploadSummary, queuedPhoto: QueuedPhoto): void => {
+    const counts = summary.get(queuedPhoto.propertyId) ?? { before: 0, after: 0, label: queuedPhoto.label };
+    summary.set(queuedPhoto.propertyId, { ...counts, [queuedPhoto.kind]: counts[queuedPhoto.kind] + 1 });
+};
+
+export const PhotoQueueProvider = ({ children }: PhotoQueueProviderProps) => {
     const user = useCurrentUser();
     const { photoConfig } = useCatalogs();
-    const { items, loaded, ref, update } = usePersistentList<QueuedPhoto>('pc_crew_photo_queue_v1');
-    const [current, setCurrent] = useState<{ id: string; progress: number } | null>(null);
-    const running = useRef(false);
-    const alive = useRef(true);
-    const backoff = useRef(0);
+    const { items, loaded, ref: latestItems, update } = usePersistentList<QueuedPhoto>(STORAGE_KEY);
+    const [current, setCurrent] = useState<UploadProgress | null>(null);
+    const isUploading = useRef(false);
+    const isMounted = useRef(true);
+    const backoffStep = useRef(0);
     const retryTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
     useEffect(() => {
-        alive.current = true;
+        isMounted.current = true;
         return () => {
-            alive.current = false;
+            isMounted.current = false;
             clearTimeout(retryTimer.current);
         };
     }, []);
 
-    const patch = (id: string, changes: Partial<QueuedPhoto>) => update((prev) => prev.map((q) => (q.id === id ? { ...q, ...changes } : q)));
+    const patchPhoto = (id: string, changes: Partial<QueuedPhoto>) =>
+        update((previous) => previous.map((queuedPhoto) => (queuedPhoto.id === id ? { ...queuedPhoto, ...changes } : queuedPhoto)));
 
-    const uploadAll = async (tally: Tally): Promise<boolean> => {
-        if (!(await checkOnline())) return false;
-        const next = () => (alive.current ? ref.current.find((q) => q.userId === user.id && !q.blocked && q.attempts < MAX_ATTEMPTS) : undefined);
-        for (let item = next(); item; item = next()) {
-            const file = queuedFile(item.fileName);
-            if (!file.exists) {
-                patch(item.id, { blocked: true, lastError: 'file-missing' });
-                continue;
-            }
-            const id = item.id;
-            setCurrent({ id, progress: 0 });
-            const result = await uploadOne(item, file.uri, (progress) => setCurrent({ id, progress }));
-            if (result === 'ok') {
-                update((prev) => prev.filter((q) => q.id !== id));
-                discard(file);
-                backoff.current = 0;
-                const agg = tally.get(item.propertyId) ?? { before: 0, after: 0, label: item.label };
-                agg[item.kind] += 1;
-                tally.set(item.propertyId, agg);
-            } else if (result.kind === 'network' || !(await checkOnline())) {
-                patch(id, { lastError: result.code });
-                return true;
-            } else {
-                update((prev) => prev.map((q) => (q.id === id ? { ...q, lastError: result.code, attempts: q.attempts + 1, blocked: result.kind === 'permanent' } : q)));
-            }
-        }
-        return false;
+    const removePhoto = (queuedPhoto: QueuedPhoto) => {
+        update((previous) => previous.filter((candidate) => candidate.id !== queuedPhoto.id));
+        discard(queuedFile(queuedPhoto.fileName));
     };
 
-    const process = () => {
-        if (running.current) return;
-        running.current = true;
+    const recordFailure = (queuedPhoto: QueuedPhoto, outcome: Extract<UploadOutcome, { isUploaded: false }>) =>
+        update((previous) =>
+            previous.map((candidate) =>
+                candidate.id === queuedPhoto.id
+                    ? { ...candidate, lastError: outcome.code, attempts: candidate.attempts + 1, blocked: outcome.errorKind === 'permanent' }
+                    : candidate,
+            ),
+        );
+
+    /** Sends each waiting photo once. Returns true when something failed and it should try again later. */
+    const uploadWaitingPhotos = async (summary: UploadSummary): Promise<boolean> => {
+        if (!(await checkOnline())) return false;
+        const triedIds = new Set<string>();
+        const nextPhoto = () =>
+            isMounted.current
+                ? latestItems.current.find((queuedPhoto) => queuedPhoto.userId === user.id && !needsManualRetry(queuedPhoto) && !triedIds.has(queuedPhoto.id))
+                : undefined;
+
+        let shouldRetryLater = false;
+        for (let queuedPhoto = nextPhoto(); queuedPhoto; queuedPhoto = nextPhoto()) {
+            const { id } = queuedPhoto;
+            triedIds.add(id);
+            if (!queuedPhoto.uploadedUrl && !queuedFile(queuedPhoto.fileName).exists) {
+                patchPhoto(id, { blocked: true, lastError: FILE_MISSING });
+                continue;
+            }
+            setCurrent({ id, progress: 0 });
+            const outcome = await sendQueuedPhoto(
+                queuedPhoto,
+                (uploadedUrl) => patchPhoto(id, { uploadedUrl }),
+                (progress) => setCurrent({ id, progress }),
+            );
+            if (outcome.isUploaded) {
+                removePhoto(queuedPhoto);
+                countUpload(summary, queuedPhoto);
+                backoffStep.current = 0;
+            } else if (outcome.errorKind === 'network' || !(await checkOnline())) {
+                // Connection problems don't count as an attempt; the rest of the queue would fail the same way.
+                patchPhoto(id, { lastError: outcome.code });
+                return true;
+            } else {
+                recordFailure(queuedPhoto, outcome);
+                shouldRetryLater = shouldRetryLater || (outcome.errorKind === 'retry' && queuedPhoto.attempts + 1 < MAX_ATTEMPTS);
+            }
+        }
+        return shouldRetryLater;
+    };
+
+    const logUploads = (summary: UploadSummary) =>
+        summary.forEach((counts, propertyId) =>
+            logActivity({
+                action: 'photo_upload',
+                user,
+                targetId: propertyId,
+                targetLabel: counts.label,
+                detail: `${counts.before} foto(s) Before, ${counts.after} foto(s) After`,
+            }),
+        );
+
+    const scheduleRetry = () => {
+        const delay = BACKOFF_MS[Math.min(backoffStep.current, BACKOFF_MS.length - 1)];
+        backoffStep.current = backoffStep.current + 1;
+        retryTimer.current = setTimeout(startUploading, delay);
+    };
+
+    const startUploading = async () => {
+        if (isUploading.current) return;
+        isUploading.current = true;
         clearTimeout(retryTimer.current);
-        const tally: Tally = new Map();
-        uploadAll(tally)
-            .catch((err) => {
-                console.error('Error en la cola de fotos:', err);
-                return false;
-            })
-            .then((waitForNetwork) => {
-                setCurrent(null);
-                running.current = false;
-                tally.forEach((a, propertyId) =>
-                    logActivity({ action: 'photo_upload', user, targetId: propertyId, targetLabel: a.label, detail: `${a.before} foto(s) Before, ${a.after} foto(s) After` }),
-                );
-                if (waitForNetwork && alive.current) retryTimer.current = setTimeout(process, BACKOFF_MS[Math.min(backoff.current++, BACKOFF_MS.length - 1)]);
-            });
+        const summary: UploadSummary = new Map();
+        const shouldRetryLater = await uploadWaitingPhotos(summary).catch((error: unknown) => {
+            console.error('Error in the photo queue:', error);
+            return true;
+        });
+        setCurrent(null);
+        isUploading.current = false;
+        logUploads(summary);
+        if (shouldRetryLater && isMounted.current) scheduleRetry();
     };
 
     useWhenOnline(() => {
-        backoff.current = 0;
-        process();
+        backoffStep.current = 0;
+        startUploading();
     }, loaded);
 
-    const addPhotos = async (job: JobRef, photos: PickedPhoto[]) => {
-        for (const photo of photos) {
+    // Compressed right away: the queue (and the phone) only keeps the optimized copy.
+    const addPhotos = async (target: PhotoTarget, photoUris: string[]) => {
+        for (const photoUri of photoUris) {
             const id = makeId('pp');
             const fileName = `${id}.jpg`;
-            await new File(await compressPhoto(photo, photoConfig)).move(queuedFile(fileName));
-            update((prev) => [...prev, { ...job, id, userId: user.id, fileName, attempts: 0 }]);
+            const compressedUri = await compressPhoto(photoUri, photoConfig);
+            await new File(compressedUri).move(queuedFile(fileName));
+            discardPickerCopy(photoUri);
+            update((previous) => [...previous, { ...target, id, userId: user.id, fileName, attempts: 0 }]);
         }
     };
 
-    const queue = items.filter((q) => q.userId === user.id);
+    const enqueue = async (target: PhotoTarget, photoUris: string[]) => {
+        try {
+            await addPhotos(target, photoUris);
+        } catch (error) {
+            startUploading();
+            throw error;
+        }
+        startUploading();
+    };
+
+    const retryAll = () => {
+        update((previous) =>
+            previous.map((queuedPhoto) => (queuedPhoto.userId === user.id ? { ...queuedPhoto, attempts: 0, blocked: queuedPhoto.lastError === FILE_MISSING } : queuedPhoto)),
+        );
+        backoffStep.current = 0;
+        startUploading();
+    };
+
+    const queue = items.filter((queuedPhoto) => queuedPhoto.userId === user.id);
     const value: PhotoQueueValue = {
         queue,
         current,
-        enqueue: (job, photos) =>
-            addPhotos(job, photos).then(process, (err) => {
-                process();
-                throw err;
-            }),
-        retryAll: () => {
-            update((prev) => prev.map((q) => (q.userId === user.id ? { ...q, attempts: 0, blocked: q.lastError === 'file-missing' } : q)));
-            backoff.current = 0;
-            process();
-        },
-        pendingFor: (propertyId, kind) => queue.filter((q) => q.propertyId === propertyId && (!kind || q.kind === kind)),
-        localUri: (q) => queuedFile(q.fileName).uri,
+        enqueue,
+        retryAll,
+        pendingFor: (propertyId, kind) => queue.filter((queuedPhoto) => queuedPhoto.propertyId === propertyId && (!kind || queuedPhoto.kind === kind)),
+        needsManualRetry,
+        localUri: (queuedPhoto) => queuedFile(queuedPhoto.fileName).uri,
     };
 
     return <PhotoQueueContext.Provider value={value}>{children}</PhotoQueueContext.Provider>;
-}
+};
 
-export function usePhotoQueue(): PhotoQueueValue {
-    const ctx = useContext(PhotoQueueContext);
-    if (!ctx) throw new Error('usePhotoQueue debe usarse dentro de <PhotoQueueProvider>');
-    return ctx;
-}
+export const usePhotoQueue = (): PhotoQueueValue => {
+    const context = useContext(PhotoQueueContext);
+    if (!context) throw new Error('usePhotoQueue must be used inside <PhotoQueueProvider>');
+    return context;
+};

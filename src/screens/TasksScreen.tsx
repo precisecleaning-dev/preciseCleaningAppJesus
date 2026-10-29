@@ -11,6 +11,7 @@ import TaskCard from '../components/TaskCard';
 import TaskStateView from '../components/TaskStateView';
 import UndoBanner from '../components/UndoBanner';
 import AppText from '../components/ui/AppText';
+import Button from '../components/ui/Button';
 import GradientHeader from '../components/ui/GradientHeader';
 import GlassPillButton from '../components/ui/GlassPillButton';
 import IconButton from '../components/ui/IconButton';
@@ -25,6 +26,7 @@ import { useOpenTasks } from '../hooks/useOpenTasks';
 import { useProjects } from '../hooks/useProjects';
 import { useTaskAccess } from '../hooks/useTaskAccess';
 import { useTaskTabOrder } from '../hooks/useTaskTabOrder';
+import { useTasksToApprove } from '../hooks/useTasksToApprove';
 import type { RootStackParams, TabParams } from '../navigation/types';
 import type { LoadStatus } from '../types';
 import type { AssignableUser, TaskFilter, TaskListPermissions, UserTask } from '../types/tasks';
@@ -95,13 +97,16 @@ const TasksScreen = ({ navigation }: Props) => {
     const [isFilterPickerVisible, setFilterPickerVisible] = useState(false);
     const [selectedTab, setSelectedTab] = useState<OpenTaskTabId>('all');
     const { status: tasksStatus, tasks, retry: retryTasks } = useOpenTasks(filter, canViewTasks);
+    const isMyTasksView = filter.kind === 'assignedTo' && filter.userId === user.id;
+    const { tasksToApprove, hasFailed: hasApprovalQueueFailed, retry: retryTasksToApprove } = useTasksToApprove(user.id, canViewTasks && isMyTasksView);
+    const reviewOnlyIds = new Set(tasksToApprove.map((task) => task.id));
     const { pendingUndo, markDone, undo } = useCompletionUndo();
 
     const canChoosePeople = !!permissions && !permissions.isOwnScope;
     const canChooseFilter = !!permissions && (permissions.canAdd || canChoosePeople);
     const { status: peopleStatus, users: people } = useAssignableUsers(canChoosePeople);
 
-    const tasksByTab = groupTasksByTab(tasks, now);
+    const tasksByTab = groupTasksByTab(tasks, now, isMyTasksView ? tasksToApprove : []);
     const visibleTabs = tabOrder.filter((tabId) => tabId === 'all' || tasksByTab[tabId].length > 0);
     const activeTab = visibleTabs.includes(selectedTab) ? selectedTab : 'all';
 
@@ -169,6 +174,14 @@ const TasksScreen = ({ navigation }: Props) => {
                     />
                 </View>
             )}
+            {isReady && !isProjectsSegment && hasApprovalQueueFailed && (
+                <View style={styles.queueWarning}>
+                    <AppText variant="caption" tone="warning" style={styles.flex}>
+                        {t.taskApprovalQueueError}
+                    </AppText>
+                    <Button label={t.tryAgain} variant="ghost" size="sm" onPress={retryTasksToApprove} />
+                </View>
+            )}
         </View>
     );
 
@@ -199,7 +212,7 @@ const TasksScreen = ({ navigation }: Props) => {
                                 now={now}
                                 projectTitle={liveProjectTitleOf(task)}
                                 onPress={openTask}
-                                onComplete={taskActionsFor(task, permissions, user.id).canComplete ? markDone : undefined}
+                                onComplete={!reviewOnlyIds.has(task.id) && taskActionsFor(task, permissions, user.id).canComplete ? markDone : undefined}
                             />
                         </View>
                     )}

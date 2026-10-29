@@ -11,6 +11,12 @@ export function findRelation<T extends CatalogItem>(list: T[], idOrName?: string
     return list.find((item) => norm(item.id) === key || norm(item.name) === key);
 }
 
+// Older documents may store the team name instead of its id, so both are matched.
+export const teamKeysOf = (teamId: string | null | undefined, teams: CatalogItem[]): string[] => {
+    const team = findRelation(teams, teamId);
+    return [...new Set([teamId, team?.id, team?.name].filter((key): key is string => !!key))];
+};
+
 function looksLikeOrphanId(value: string): boolean {
     const v = value.trim();
     if (!v || v.includes(' ') || !/^[0-9a-zA-Z_-]+$/.test(v)) return false;

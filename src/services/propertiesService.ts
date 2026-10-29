@@ -1,5 +1,6 @@
-import { documentId, getDocsFromServer, query, where } from 'firebase/firestore';
-import type { Property } from '../types';
+import { arrayUnion, doc, documentId, getDocsFromServer, query, updateDoc, where } from 'firebase/firestore';
+import { db } from '../config/firebase';
+import type { PhotoKind, Property } from '../types';
 import { chunkList } from '../utils/chunkList';
 import { FIRESTORE_IN_LIMIT, isDocId, listen, typedCollection } from './firestore';
 
@@ -17,3 +18,7 @@ export async function getPropertiesByIds(ids: string[]): Promise<Property[]> {
     );
     return parts.flatMap((r) => (r.status === 'fulfilled' ? r.value.docs.map((d) => d.data()) : []));
 }
+
+/** Links an uploaded photo to the house. arrayUnion makes it safe to repeat after a failed attempt. */
+export const addPhotoUrl = (propertyId: string, kind: PhotoKind, photoUrl: string): Promise<void> =>
+    updateDoc(doc(db, 'properties', propertyId), { [kind === 'before' ? 'beforePhotos' : 'afterPhotos']: arrayUnion(photoUrl) });

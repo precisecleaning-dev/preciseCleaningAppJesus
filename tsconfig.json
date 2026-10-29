@@ -7,5 +7,6 @@
         "paths": {
             "@firebase/auth": ["./node_modules/@firebase/auth/dist/rn/index.rn.d.ts"]
         }
-    }
+    },
+    "exclude": ["node_modules", "babel.config.js", "metro.config.js", "android", "ios", "functions"]
 }

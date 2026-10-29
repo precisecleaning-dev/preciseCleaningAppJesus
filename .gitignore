@@ -41,3 +41,7 @@ yarn-error.*
 /android
 
 prompts.md
+# Firebase
+.firebase/
+firebase-debug.log*
+firestore-debug.log*

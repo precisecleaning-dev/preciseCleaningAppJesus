@@ -11,4 +11,6 @@ export const styles = StyleSheet.create({
     tabs: { paddingHorizontal: space.md, paddingTop: space.sm, paddingBottom: space.sm },
     item: { paddingHorizontal: space.md, paddingBottom: space.sm },
     skeletons: { paddingHorizontal: space.md, paddingTop: space.lg },
+    queueWarning: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.md, paddingBottom: space.sm },
+    flex: { flex: 1 },
 });

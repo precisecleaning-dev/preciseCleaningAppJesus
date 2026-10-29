@@ -102,6 +102,7 @@ mala práctica, señálala y propón la corrección; no la repliques.
   `OptionPicker` (lista con búsqueda, selección simple o múltiple), `DueDateField` (con o sin hora),
   `TaskStateView` (estados de tareas y proyectos), `TaskCard`, `ProjectCard`, `ProjectsList`,
   `MessageThread` (hilo de mensajes con campo para escribir: notas de casas y comentarios de tareas),
+  `TaskApprovalCard` (visto bueno de una tarea) y `ApproverField` (elegir quién aprueba; hook `useApprovers`),
   `AttachmentsSection` (ver, subir y quitar adjuntos; hook `useAttachments`, servicio genérico
   `attachmentsService`; solo tareas: los proyectos no llevan adjuntos). Toda subida a Storage pasa por
   `src/services/storageService.ts`.
@@ -149,7 +150,7 @@ mala práctica, señálala y propón la corrección; no la repliques.
 - **Permisos:** salen siempre de `settings_roles`. Se escucha en vivo **solo el rol del usuario**
   (`settings_roles/{system_users.roleId}`, `subscribeRole` en `sessionService`), nunca la colección
   completa. Única excepción: la lista de personas asignables de Tasks (`assignableUsersService`,
-  solo para quien puede asignar), que necesita saber qué roles ven el Task list. **No hay super admin por nombre de rol**: cada permiso
+  solo para quien puede asignar o enviar a aprobar), que necesita saber qué roles ven el Task list. **No hay super admin por nombre de rol**: cada permiso
   sale de los flags del módulo correspondiente (los roles reales son Admin, Owner, Manager, System,
   Employee). **Fallar cerrado:** sin rol (ni del
   servidor ni guardado en el teléfono) la app no entra (`BlockedScreen` "noRole" / "roleError");
@@ -163,6 +164,8 @@ mala práctica, señálala y propón la corrección; no la repliques.
   `runTransaction` y validan ese estado.
 - **La interfaz no es la seguridad.** Ocultar un botón no impide la acción: toda regla de
   permisos o de negocio tiene que existir también en las Security Rules.
+- **Proyectos:** scope `All` de Task List ve todos; scope `Own` solo los relacionados (responsable, creador,
+  su equipo o con una tarea abierta suya). Lo decide `useProjects`.
 - Nunca descargues colecciones completas; filtra por empleado, equipo o ids. Clientes: solo los de
   las casas del empleado (`customersService`, por id, id legacy o nombre, en tandas de 30).
 - Sin señal, Firestore entrega primero un resultado vacío "desde caché". `listen()` lo ignora a
@@ -239,6 +242,10 @@ Finish exige Start + ≥1 foto Before y ≥1 After; solo quien marcó o un admin
 - Fotos: `src/context/PhotoQueueContext.tsx` (cola en disco en `Paths.document/pending-photos`;
   se guarda solo el nombre del archivo, porque en iOS la ruta de la app cambia con cada
   actualización). Los errores de conexión no cuentan como intento; espera creciente (30 s → 10 min).
+  Cada foto se comprime **al agregarla** (`compressPhoto`, reglas en `src/utils/photoCompression.ts`
+  según `photo_config`, con límites para valores inválidos) y se borra la copia del picker. La subida
+  tiene dos pasos: Storage (guarda `uploadedUrl` en la cola) y `addPhotoUrl` (`arrayUnion`); un
+  reintento nunca vuelve a subir un archivo que ya está en Storage.
 - Start/Finish y notas: `src/context/OutboxContext.tsx` (Firestore en RN no tiene caché
   persistente). Las notas son idempotentes: no se duplican al reintentar. Start/Finish guarda el
   valor que vio el empleado (`guard`) y se aplica en transacción (`decideMark`): si alguien más
@@ -259,6 +266,24 @@ Finish exige Start + ≥1 foto Before y ≥1 After; solo quien marcó o un admin
   La primera vez solo toman la foto inicial.
 - Con la app cerrada no hay push (requeriría Cloud Function + FCM).
 
+## Cloud Functions (`functions/`, correos)
+
+- Codebase **`mobile`** del mismo proyecto de Firebase (`firebase.json` en la raíz). Corren en Firebase,
+  no en el teléfono: la app publicada no las llama; Firestore las dispara en cada escritura, venga de la web
+  o del móvil. No tocan las funciones de la web (codebase `default`, repo `web-jesus`).
+- **Correos de Tasks:** `notifyontaskwrite` (`user_tasks/{taskId}`). Lógica pura y probada en
+  `functions/src/taskEvents.ts` (a quién avisar) y `functions/src/emails.ts` (plantillas en inglés, todo lo de
+  Firestore escapado). Cada aviso se registra en `task_notifications` con id fijo por evento y persona:
+  un reintento no duplica el correo, y el estado (`SENT` / `ERROR` + motivo) queda visible.
+- SMTP con `nodemailer` y **secretos propios** en Secret Manager: `CREW_SMTP_HOST`, `CREW_SMTP_PORT`,
+  `CREW_SMTP_USER`, `CREW_SMTP_PASS`, `CREW_SMTP_FROM`. **No** se usan ni se modifican los `SMTP_*` de la web.
+  **Nunca** credenciales en el repo; `functions/.secret.local` (solo emulador) está en `.gitignore`.
+- Es un proyecto Node aparte (`functions/package.json`, `npm install` ahí, no `expo install`). Excluido de
+  TypeScript, ESLint y Metro de la app.
+- **Despliegue (lo hace Antonio, nunca Claude):** `firebase deploy --only functions:mobile` desde la raíz.
+- Probar sin producción: `npm test` en `functions/` (lógica pura) y emuladores con un proyecto `demo-`
+  (`firebase emulators:exec --project demo-precise --only functions,firestore ...`).
+
 ## Verificación
 
 ```bash
@@ -268,6 +293,7 @@ npm run format:check                 # formato Prettier (npm run format lo corri
 npx expo-doctor
 npx expo export --platform android   # y --platform ios: confirma que Metro empaqueta
 grep -rn "style={{" src              # solo valores de runtime
+(cd functions && npm test)           # si cambiaste functions/: compila y corre las pruebas
 ```
 
 Compilar no prueba que funcione: cámara, fotos y conexión se prueban en un teléfono

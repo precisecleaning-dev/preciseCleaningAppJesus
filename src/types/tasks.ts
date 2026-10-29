@@ -13,6 +13,8 @@ export interface Repeat {
 
 export type UserTaskApprovalStatus = 'draft' | 'pending' | 'approved' | 'changes_requested';
 
+export type ApprovalDecision = 'approved' | 'changes_requested';
+
 export interface UserTaskApproval {
     status: UserTaskApprovalStatus;
     approverUserId: string;
@@ -88,9 +90,14 @@ export type TaskFilter =
     | { kind: 'everyone' }
     | { kind: 'project'; projectId: string; restrictToUserId: string | null };
 
+/** Which projects a person sees: everything (Task List scope "All") or only the ones related to them. */
+export type ProjectScope = { kind: 'all' } | { kind: 'related'; userId: string; teamKeys: string[]; taskProjectIds: string[] };
+
 export interface AssignableUser {
     userId: string;
     userName: string;
+    /** Their role has the "Owner" module: proposed by default as the approver (same rule as the web). */
+    isOwner?: boolean;
 }
 
 export type TaskProjectStatus = 'active' | 'done' | 'archived';

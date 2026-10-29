@@ -9,6 +9,7 @@ import { useProjects } from '../hooks/useProjects';
 import { useTaskAccess } from '../hooks/useTaskAccess';
 import { useTaskWriteActions } from '../hooks/useTaskWriteActions';
 import type { AttachmentSource, PickedAttachmentFile } from '../services/attachmentFilesService';
+import { useCurrentUser } from '../context/SessionContext';
 import type { TaskAssignee, TaskComment } from '../types/tasks';
 import {
     buildTaskComment,
@@ -19,6 +20,7 @@ import {
     type TaskFormErrorReason,
     type TaskFormValues,
 } from '../utils/taskWrites';
+import ApproverField from './ApproverField';
 import AttachmentsSection from './AttachmentsSection';
 import DueDateField from './DueDateField';
 import MessageThread from './MessageThread';
@@ -55,7 +57,9 @@ const parseDuration = (text: string): number => (/^\d+$/.test(text.trim()) ? Num
 
 const TaskForm = ({ initialValues, editingTaskId, onSaved }: Props) => {
     const { priorities } = useCatalogs();
+    const user = useCurrentUser();
     const { users: people, status: peopleStatus } = useAssignableUsers(true);
+    const approvers = people.filter((person) => person.userId !== user.id);
     const { projectPermissions } = useTaskAccess();
     const canViewProjects = !!projectPermissions?.canView;
     const { projects } = useProjects(canViewProjects);
@@ -70,6 +74,7 @@ const TaskForm = ({ initialValues, editingTaskId, onSaved }: Props) => {
     const [draftComments, setDraftComments] = useState<TaskComment[]>([]);
     const [pendingFiles, setPendingFiles] = useState<PickedAttachmentFile[]>([]);
     const [unsentCommentText, setUnsentCommentText] = useState('');
+    const [approver, setApprover] = useState<TaskAssignee | null>(null);
 
     const errors = hasTriedToSave ? validateTaskForm(values) : {};
     const updateValues = (changes: Partial<TaskFormValues>) => setValues((current) => ({ ...current, ...changes }));
@@ -130,7 +135,7 @@ const TaskForm = ({ initialValues, editingTaskId, onSaved }: Props) => {
             });
             return;
         }
-        createTask(valuesToSave, [...draftComments, ...unsentComments]).then((newTaskId) => {
+        createTask(valuesToSave, [...draftComments, ...unsentComments], approver).then((newTaskId) => {
             if (!newTaskId) {
                 setSaving(false);
                 return;
@@ -225,6 +230,14 @@ const TaskForm = ({ initialValues, editingTaskId, onSaved }: Props) => {
                         ))}
                     </View>
                 </FormSection>
+
+                {!editingTaskId && (
+                    <FormSection label={t.taskFieldApproval} hint={t.taskApprovalHint}>
+                        <View style={styles.fieldRow}>
+                            <ApproverField approver={approver} approvers={approvers} isLoading={peopleStatus === 'loading'} canChooseNone onChange={setApprover} />
+                        </View>
+                    </FormSection>
+                )}
 
                 {!editingTaskId && (
                     <Card>

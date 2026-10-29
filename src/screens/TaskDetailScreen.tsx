@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { CalendarDays, CircleCheckBig, Clock, Flag, FolderKanban, Hourglass, Pencil, RotateCcw, Send, Trash2, Users } from 'lucide-react-native';
+import { CalendarDays, CircleCheckBig, Clock, Flag, FolderKanban, Pencil, RotateCcw, Send, Trash2, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,6 +7,7 @@ import AttachmentsSection from '../components/AttachmentsSection';
 import MessageThread from '../components/MessageThread';
 import ScreenTopBar from '../components/ScreenTopBar';
 import StatusScrim from '../components/StatusScrim';
+import TaskApprovalCard from '../components/TaskApprovalCard';
 import TaskStateView from '../components/TaskStateView';
 import AppText from '../components/ui/AppText';
 import BottomActionBar from '../components/ui/BottomActionBar';
@@ -29,7 +30,6 @@ import type { RootStackParams } from '../navigation/types';
 import type { AttachmentSource } from '../services/attachmentFilesService';
 import type { AttachmentOwner } from '../utils/attachmentPaths';
 import { colors } from '../theme/tokens';
-import type { UserTask } from '../types/tasks';
 import { confirmAction } from '../utils/confirm';
 import { formatDateTime } from '../utils/dateFormat';
 import { findRelation } from '../utils/relations';
@@ -39,15 +39,6 @@ import { TASK_COMMENT_MAX_LENGTH, taskActionsFor } from '../utils/taskWrites';
 import { styles } from './TaskDetailScreen.styles';
 
 type Props = NativeStackScreenProps<RootStackParams, 'TaskDetail'>;
-
-const approvalTextOf = (task: UserTask): string | null => {
-    if (!task.approval) return null;
-    const name = task.approval.approverUserName;
-    if (task.approval.status === 'approved') return fmt(t.taskApprovalApproved, { name });
-    if (task.approval.status === 'changes_requested') return task.approval.note ? `${t.taskApprovalChanges}: ${task.approval.note}` : t.taskApprovalChanges;
-    if (task.approval.status === 'pending') return fmt(t.taskApprovalPending, { name });
-    return `${t.taskApprovalDraft} · ${name}`;
-};
 
 const TaskDetailScreen = ({ route, navigation }: Props) => {
     const { taskId } = route.params;
@@ -80,7 +71,6 @@ const TaskDetailScreen = ({ route, navigation }: Props) => {
     const isDone = task.status === 'done';
     const isOverdue = !isDone && isTaskOverdue(task, now);
     const priority = findRelation(priorities, task.priorityId);
-    const approvalText = approvalTextOf(task);
     const assigneeNames = task.assignees.map((assignee) => assignee.userName).join(', ');
 
     const runWhileWorking = (work: () => Promise<unknown>) => {
@@ -153,10 +143,9 @@ const TaskDetailScreen = ({ route, navigation }: Props) => {
                         <Card style={styles.card}>
                             <InfoRow icon={Users} accent="teal" label={t.taskAssignedTo} value={assigneeNames || t.taskNone} />
                             <InfoRow icon={Send} accent="sky" label={t.taskAssignedBy} value={task.createdByUserName || t.taskNone} />
-                            {!!approvalText && (
-                                <InfoRow icon={Hourglass} accent={task.approval?.status === 'changes_requested' ? 'coral' : 'amber'} label={t.taskApproval} value={approvalText} />
-                            )}
                         </Card>
+
+                        <TaskApprovalCard task={task} currentUserId={user.id} canManage={actions.canManageApproval} />
 
                         <Card style={styles.card}>
                             <AttachmentsSection

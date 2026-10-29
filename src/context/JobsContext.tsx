@@ -5,7 +5,7 @@ import { useWhenOnline } from '../hooks/useWhenOnline';
 import { getCustomersByKeys } from '../services/customersService';
 import { subscribeAssigned, subscribeTeam } from '../services/propertiesService';
 import type { Customer, Property, Status } from '../types';
-import { displayClientName, findRelation } from '../utils/relations';
+import { displayClientName, findRelation, teamKeysOf } from '../utils/relations';
 import { useCatalogs } from './CatalogsContext';
 import { useOnline } from './NetworkContext';
 import { useSession } from './SessionContext';
@@ -44,8 +44,7 @@ export const JobsProvider = ({ children }: JobsProviderProps) => {
 
     const hasHousesAccess = housesPermission?.canView === true;
     const userId = user?.id ?? '';
-    const team = findRelation(teams, user?.teamId);
-    const teamKey = [...new Set([user?.teamId, team?.id, team?.name].filter(Boolean))].join('|');
+    const teamKey = teamKeysOf(user?.teamId, teams).join('|');
 
     const assigned = useLiveSubscription<Property[]>({
         key: `assigned:${userId}`,

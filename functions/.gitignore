@@ -1,0 +1,5 @@
+lib/
+node_modules/
+# Secret values for the local emulator (never commit)
+.secret.local
+*.local

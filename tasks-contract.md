@@ -124,6 +124,7 @@ export interface UserTask {
   projectId: string | null;          // → task_projects (null = sin proyecto)
   projectTitle: string | null;       // copia del título del proyecto
   repeat: Repeat | null;
+  repeatOfTaskId?: string;           // solo en la tarea que crea una repetición: id de la que se completó (desde el 28/10/2026, ver §9 correos)
   approval: UserTaskApproval | null;
   status: UserTaskStatus;
   doneAt: IsoDateTime | null;        // cuándo se marcó hecha
@@ -295,7 +296,7 @@ Las tareas **abiertas** se escuchan en vivo (`onSnapshot`); las **hechas** crece
 | Esperando MI visto bueno | `where('approval.approverUserId', '==', userId)`, `where('approval.status', '==', 'pending')`. La web luego descarta las que no están abiertas (convendría agregar `where('status', '==', 'open')`). | No |
 | Una tarea (detalle) | `onSnapshot(doc('user_tasks', id))` | — |
 | Hechas por página | Filtro de persona (`assigneeUserIds array-contains` o `createdByUserId ==`, o ninguno para "todas") + `where('status', '==', 'done')` + `orderBy('doneAt', 'desc')` + `startAfter(cursor)` + `limit(21)` (20 por página; la 21 indica si hay más). | **Sí, compuesto** (uno por cada variante: con `assigneeUserIds`, con `createdByUserId`, sin filtro de persona) |
-| Proyectos | Toda la colección `task_projects` en vivo (son pocos). | No |
+| Proyectos | Scope "All": toda la colección `task_projects` en vivo (son pocos). Scope "Own" (móvil, decisión del 26/10/2026): solo los relacionados, juntando sin repetir `where('ownerUserId', '==', yo)`, `where('createdByUserId', '==', yo)`, `where('teamId', 'in', [id y nombre de mi equipo])` y `where(documentId(), 'in', projectId de mis tareas abiertas)` en tandas de 30. Es orden de pantalla, no seguridad: las reglas dejan leer todo con Task List. | No |
 
 **Las tareas hechas con el formato viejo** (`assigneeUserId`, sin `assigneeUserIds`) **no salen** en la consulta de hechas.
 
@@ -338,6 +339,15 @@ Una tarea **diaria** (repetición distinta de `monthly`) con fecha futura no se 
 - **Leer:** Task List.
 - **Actualizar:** Projects Edit, **o** cualquiera con Task List si **solo** cambia `taskCount`, `doneCount`, `openMinutes` o `comments` (por eso los contadores viajan en el batch de cada tarea).
 - **Crear:** Projects Add. **Borrar:** Projects Delete.
+
+**Visto bueno en el móvil (decisiones del 28/10/2026, igual que `TaskApproval.tsx` de la web):**
+- Al crear: campo "Approval" (por defecto sin aprobación) → `approval` en `'draft'`.
+- En el detalle (tarjeta "Approval"): enviar / reenviar, "Cancel request" y "Doesn't need approval" para quien puede editar la tarea (Edit de Task List, asignado o creador) mientras está abierta. El aprobador propuesto es el usuario cuyo rol tiene el módulo `Owner`; si no hay, el primero de la lista (sin la regla de rol "Administrator": ese rol no existe).
+- Enviar, cancelar y quitar van en **transacción** que valida el estado (riesgo 2); si cambió, se avisa y no se escribe.
+- **Aprobador:** en "My tasks" ve también las que esperan su OK (misma consulta que la web, descartando en el cliente las
+  que no están abiertas y aquellas en las que ya está asignado); van **solo** en la pestaña Approval y sin casilla de
+  completar. En el detalle: **Approve** o **Request changes** (nota obligatoria), en transacción que valida
+  `status === 'pending'` y que el aprobador sea quien responde. Comentarios: "Approved." / "Asked for changes: {nota}".
 
 **Reglas de la pantalla que el móvil debe replicar** (las reglas no siempre las cubren):
 - Ver el Task list: `Task List.canView`.
@@ -392,6 +402,10 @@ Una tarea **diaria** (repetición distinta de `monthly`) con fecha futura no se 
 - **Fotos desde la cámara.** Comprime antes de subir (como la web: lado mayor 1920 px, ~1 MB). Con React Native Firebase, `putFile` sube desde la ruta local y tolera mejor conexiones malas. Respeta la ruta y la metadata de §7. Si el usuario adjunta fotos al **crear** una tarea, súbelas después de crearla e informa cuáles fallaron.
 - **"Hoy" y zona horaria.** Usa la fecha local del dispositivo para `dueDate`, las pestañas y `nextOccurrence`.
 - **Notificaciones push** (tarea asignada, solicitud de aprobación) no existen en la web. Requieren guardar tokens y una Cloud Function: es una función nueva que hay que coordinar.
+- **Correos (Cloud Functions del codebase `mobile`, en `app-jesus/functions`, 28/10/2026).** Se disparan solas con cada escritura en `user_tasks` (y luego `task_projects`), de la web o del móvil; ninguna app manda correos.
+  - **Tarea asignada:** a cada persona en `assignees` / `assigneeUserIds` / `assigneeUserId` de una tarea **abierta** nueva, o a las que se **agregan** al editarla. Nunca al creador, ni en tareas con `repeatOfTaskId`.
+  - **`repeatOfTaskId` (campo nuevo, aprobado por Antonio):** la tarea que genera una repetición al completar guarda el id de la que se completó. El móvil ya lo escribe (`buildRepeatTaskDocument`). **La web debe agregarlo** en su `completeTask`; mientras no lo haga, las repeticiones generadas desde la web mandan correo de "tarea asignada".
+  - Registro en `task_notifications/{eventId}_{tipo}_{userId}` (`kind`, `taskId`, `recipientUserId`, `to`, `subject`, `state`, fechas, `error`). Solo lo escribe la función; los clientes no deberían leerlo ni escribirlo (Security Rules).
 
 ---
 

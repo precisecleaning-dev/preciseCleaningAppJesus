@@ -1,5 +1,130 @@
 # code-notes.md — decisiones y pendientes (app móvil)
 
+## 2026-10-28 · Correos de Tasks (parte 1 de 4: tarea asignada)
+
+- **Dónde:** Cloud Functions en `app-jesus/functions`, codebase `mobile` (decisión de Antonio: que la app no
+  dependa del repo de la web). Mandan el correo directo por SMTP (no usan `sendmailqueue` de la web) con
+  **secretos propios `CREW_SMTP_*`** (decisión del 28/10/2026: no tocar los `SMTP_*` de la web).
+- **Hallazgo:** los `SMTP_*` de la web están mal cargados (`SMTP_HOST` guardó el texto del prompt del CLI y
+  `SMTP_USER` tiene el correo dos veces), así que los correos de Quality Check (`sendmailqueue`) no pueden
+  salir. Recuperar contraseña e invitaciones no dependen de eso (usan Firebase Auth). Avisar a la web.
+- **Parte 1:** `notifyontaskwrite` avisa "You have a new task" a quien se asigna (tarea nueva abierta o personas
+  agregadas al editar). No al creador, no a usuarios `Inactive` o sin email válido, no en repeticiones.
+- **`repeatOfTaskId`** (aprobado): el móvil lo escribe en la tarea que genera una repetición. **Pendiente en la
+  web** (`completeTask` de `userTasksService`); hasta entonces sus repeticiones sí mandan correo.
+- **Versiones:** firebase-functions 7.4, firebase-admin 14.5, nodemailer 10.2.1 (0 vulnerabilidades). La web
+  usa nodemailer 6.10.1, que tiene vulnerabilidades altas (análisis de direcciones: puede entregar a otro
+  dominio): **conviene actualizarla también en `web-jesus/functions`.**
+- **Probado:** 10 pruebas unitarias (`npm test` en `functions/`) y escenario completo en emuladores (proyecto
+  `demo-precise`, SMTP falso local): tarea nueva → correo a Ana (no a Luis inactivo ni al creador); agregar a
+  Pepe → correo a Pepe; cambiar el título → nada; repetición → nada. Correo revisado: título escapado en el
+  HTML, asunto en una línea, fecha MM/DD/YYYY. **No probado con Gmail real ni en producción.**
+- Para los emuladores, `firebase-tools` 15 pide Java 21 (aquí hay 17): se usó `npx firebase-tools@14`.
+- **Para desplegar (Antonio):**
+  1. `npm i -g firebase-tools` y `firebase login` con una cuenta del proyecto `bdprecise-2d4bc`.
+  2. Cargar los secretos propios con `firebase functions:secrets:set CREW_SMTP_HOST` (y `CREW_SMTP_PORT`,
+     `CREW_SMTP_USER`, `CREW_SMTP_PASS`, `CREW_SMTP_FROM`), escribiendo **solo el valor** en el prompt.
+     Valores: host `smtp.gmail.com`, puerto `587`, usuario `no-reply@precisecleaningtx.com`, from
+     `Precise Cleaning <no-reply@precisecleaningtx.com>` (la contraseña de aplicación no se anota aquí).
+     Verificar con `firebase functions:secrets:access` (no para la contraseña).
+  3. `cd functions && npm install && npm test`, luego desde la raíz `firebase deploy --only functions:mobile`.
+  4. Probar con una tarea de prueba asignada a un usuario de prueba y revisar `task_notifications`.
+- **Opcional:** `functions/.env` con `APP_URL=https://…` agrega el botón "Open Precise Cleaning" en el correo.
+- **Security Rules:** `task_notifications` solo lo escribe la función (Admin SDK); los clientes no deberían
+  poder leerlo (tiene correos de los usuarios). Revisar que no haya una regla general que lo abra.
+- Siguientes partes: 2) proyecto asignado (responsable), 3) aprobación pedida (aprobador), 4) aprobado o
+  cambios pedidos (a quien la envió).
+
+## 2026-10-28 · Tasks: historial de la aprobación
+
+- La tarjeta "Approval" muestra **Approval history**: cada envío, pedido de cambios y aprobación, en orden, con
+  autor ("You" si fuiste tú) y fecha; las notas de cambios van en burbujas como los comentarios, y la que
+  sigue pendiente se marca con borde coral.
+- Se lee de los **comentarios** de la tarea (`approvalHistoryOf`, `src/utils/approvalComments.ts`), porque
+  `approval.note` solo guarda la última nota. Los textos que se escriben y se leen están en ese mismo archivo
+  (iguales a la web). Si la web cambia esos textos, el historial deja de reconocerlos: avisar a la web.
+- Si el pedido de cambios actual no tiene comentario (datos viejos), se agrega desde `approval.note`.
+- Un comentario normal que diga exactamente "Approved." se tomaría como aprobación: riesgo aceptado (solo se
+  lee si la tarea tiene `approval`).
+- Los mismos eventos siguen apareciendo en "Comments" (son comentarios en los datos, como en la web).
+  Decisión de Antonio (28/10/2026): se quedan ahí, no se ocultan.
+
+## 2026-10-28 · Tasks: visto bueno (paso 2 de 2: el aprobador responde)
+
+- **"My tasks"** suma las tareas que esperan MI OK (`useTasksToApprove`, `subscribeTasksToApprove`): misma
+  consulta que la web (`approval.approverUserId == yo` + `approval.status == 'pending'`, sin índice compuesto);
+  las que no están abiertas se descartan en el cliente en vez de agregar un tercer filtro. Se quitan las que ya
+  me asignaron (ya vienen en la lista). Van **solo** en la pestaña Approval y **sin círculo de completar**.
+  Solo con el filtro "My tasks" (como la web). Si esa consulta falla, la lista se ve igual y aparece un aviso
+  con "Try again".
+- **Detalle:** el aprobador ve "Waiting for your OK · sent {fecha}", **Approve** y **Request changes** (nota
+  obligatoria; si no se guarda, la nota queda escrita). Transacción que valida `pending` y que yo sea el
+  aprobador (`canDecideApproval`); comentarios iguales a la web.
+- No hay contador en la barra de pestañas (la web tiene uno en el menú): queda pendiente si se quiere.
+
+## 2026-10-28 · Tasks: visto bueno (paso 1 de 2: asignar aprobador y enviar)
+
+- Igual que la web (`TaskApproval.tsx`, `userTasksService.requestApproval`), con los mismos textos en los
+  comentarios ("Sent for approval to {nombre}.").
+  - **Crear tarea:** campo "Approval" ("No approval needed" o una persona) → `approval` en `'draft'`.
+  - **Detalle:** `TaskApprovalCard` muestra el estado y permite **Send for approval / Send again** (eligiendo
+    quién aprueba), **Cancel request** (desde `pending`, si no eres el aprobador) y **Doesn't need approval**
+    (desde `draft`).
+- **Quién gestiona:** quien puede editar la tarea según la web: Edit de Task List, asignado o creador, con la
+  tarea abierta (`canManageApproval`). Ojo: incluye a empleados asignados (es el caso de uso: mandan a
+  aprobar su trabajo), aunque el formulario de edición siga siendo solo para Edit.
+- **Aprobador propuesto:** rol con módulo `Owner`; si no hay, el primero. Lista = personas asignables menos
+  uno mismo; el aprobador actual se conserva aunque ya no esté en la lista.
+- **Transacciones:** enviar, cancelar y quitar validan el estado (`canRequestApproval`, etc.). Si la web lo
+  cambió, aviso "The approval of this task just changed" (`approvalChanged`).
+- El aviso al completar distingue "waiting for X's OK" (pendiente) de "needs X's OK … send it first".
+- **Riesgo sin probar:** para enviar, un empleado carga `system_users` activos y `settings_roles` completos
+  (`assignableUsersService`). Si las Security Rules no se lo permiten, verá "Couldn't load the people list" y no
+  podrá elegir aprobador. La web hace las mismas lecturas, así que debería funcionar.
+
+## 2026-10-27 · Fotos de casas: compresión y cola
+
+- **Compresión** (`compressPhoto`, `src/utils/photoCompression.ts`): sigue `app_settings/photo_config`
+  (lado mayor ≤ `maxImageWidth`, calidad `compressionQuality`, bajando de 0.1 en 0.1 hasta pesar ≤
+  `maxSizeMB`, mínimo 0.5 como el slider de la web). Si a calidad 0.5 sigue pesando más, reduce la
+  foto (nunca a menos de 960 px). Valores inválidos o en 0 usan los de la web (1920 px · 0.85 · 1 MB)
+  y se limitan a sus rangos (640–3840 px, 0.5–1, 0.3–5 MB).
+  - **Arreglado:** el tamaño se lee de la imagen decodificada. Antes se usaba el que reporta el picker,
+    que según la documentación de SDK 57 "puede ser 0": en ese caso la foto **no se redimensionaba**.
+  - La copia que el picker deja en caché se borra después de comprimir (solo si está en `Paths.cache`;
+    nunca se toca la galería).
+- **Cola** (`PhotoQueueContext`):
+  - Subida en dos pasos: Storage → `uploadedUrl` guardado en la cola → `addPhotoUrl` (`arrayUnion`). Si
+    falla el segundo paso, el reintento no vuelve a subir el archivo (antes quedaba un archivo huérfano
+    en Storage por cada reintento).
+  - **Arreglado:** un error que no era de red se reintentaba en seguida hasta 5 veces seguidas y la
+    foto quedaba trabada. Ahora cada foto se intenta una vez por pasada y se reintenta con espera
+    creciente.
+  - Las fotos trabadas (5 intentos o error permanente) muestran "N not uploaded" y un botón "Retry" en
+    la misma sección de la casa (antes solo desde Profile).
+- `PhotoSection`, `photoService` y `PhotoQueueContext` pasaron a funciones flecha, `async/await`,
+  nombres claros y `Touchable` en las miniaturas. El texto de la bitácora (`N foto(s) Before…`) no cambió.
+- Adjuntos de tareas: `compressPhoto` ya lee el tamaño real, así que se quitó `Image.getSize`.
+- **Sin probar en teléfono.** Probar: foto de cámara y de galería (varias), foto vertical (orientación),
+  peso final en Storage, modo avión con fotos en cola, y borrar una casa con fotos en cola.
+
+## 2026-10-26 · Proyectos visibles según el scope
+
+- **Decisión de Antonio:** scope `All` de Task List (hoy Admin y Owner) ve todos los proyectos; scope `Own`
+  solo los relacionados: responsable (`ownerUserId`), creador (`createdByUserId`), su equipo (`teamId`) o
+  con una tarea abierta asignada a él. Aplica a la lista de proyectos, a los títulos en Tasks y al
+  selector "Project" del formulario de tarea. El detalle de un proyecto se sigue abriendo por id.
+- El equipo se compara por id **y por nombre** (`teamKeysOf`, igual que las casas), por si hay documentos
+  viejos con el nombre. Pendiente: al revisar Firestore, si ningún `task_projects.teamId` tiene un
+  nombre, dejarlo solo por id.
+- **No es seguridad:** las reglas dejan leer `task_projects` a cualquiera con Task List. Si los proyectos
+  ajenos no se deben leer, hay que cambiar las reglas (con la web).
+- Limitación aceptada: un proyecto donde el empleado solo tenía tareas, y ya están todas hechas, deja de
+  salirle (solo se escuchan tareas abiertas).
+- Al asignarle una tarea de un proyecto nuevo, la lista se vuelve a pedir y muestra el esqueleto un momento.
+- `subscribeMerged` (`src/services/firestore.ts`) junta varias consultas en vivo sin repetir por id; lo usan
+  tareas y proyectos.
+
 ## 2026-10-26 · Revisión de código: #21 y #22 (cierre)
 
 - **#21:** el campo para escribir de `MessageThread` usa `TextField` (antes un `TextInput` suelto).

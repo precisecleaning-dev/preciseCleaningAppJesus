@@ -1,8 +1,17 @@
 import { arrayUnion, collection, deleteField, doc, increment, runTransaction, updateDoc, writeBatch, type DocumentReference, type Transaction } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import type { TaskComment, UserTask } from '../types/tasks';
+import type { ApprovalDecision, TaskAssignee, TaskComment, UserTask } from '../types/tasks';
+import { approvalDecisionCommentText, approvalRequestCommentText } from '../utils/approvalComments';
 import {
+    canDecideApproval,
+    decidedApprovalOf,
     buildNewTaskDocument,
+    buildTaskComment,
+    canCancelApprovalRequest,
+    canRemoveApproval,
+    canRequestApproval,
+    cancelledApprovalOf,
+    pendingApprovalOf,
     buildRepeatTaskDocument,
     buildTaskChanges,
     canMarkDone,
@@ -17,7 +26,7 @@ import {
 import { deleteFromStorage } from './storageService';
 import { taskDocument } from './tasksService';
 
-export type TaskWriteFailure = 'notFound' | 'notOpen' | 'notDone' | 'needsApproval' | 'projectNotFound';
+export type TaskWriteFailure = 'notFound' | 'notOpen' | 'notDone' | 'needsApproval' | 'projectNotFound' | 'approvalChanged';
 
 export class TaskWriteError extends Error {
     readonly reason: TaskWriteFailure;
@@ -57,9 +66,9 @@ const negate = (contribution: ProjectContribution): ProjectContribution => ({
     openMinutes: -contribution.openMinutes,
 });
 
-export const createTask = async (values: TaskFormValues, actor: TaskActor, comments: TaskComment[] = []): Promise<string> => {
+export const createTask = async (values: TaskFormValues, actor: TaskActor, comments: TaskComment[] = [], approver: TaskAssignee | null = null): Promise<string> => {
     const newTaskReference = doc(collection(db, 'user_tasks'));
-    const newTaskDocument = buildNewTaskDocument(values, actor, new Date().toISOString(), comments);
+    const newTaskDocument = buildNewTaskDocument(values, actor, new Date().toISOString(), comments, approver);
     if (!values.projectId) {
         const batch = writeBatch(db);
         batch.set(newTaskReference, newTaskDocument);
@@ -154,3 +163,42 @@ export const deleteTask = async (taskId: string): Promise<void> => {
 };
 
 export const addTaskComment = (taskId: string, comment: TaskComment): Promise<void> => updateDoc(rawTaskReference(taskId), { comments: arrayUnion(comment) });
+
+// Approval writes run in a transaction that checks the state the screen showed: if the web changed
+// it seconds before, nothing is overwritten (tasks-contract.md, risk 2).
+
+export const requestApproval = (taskId: string, approver: TaskAssignee, actor: TaskActor): Promise<void> =>
+    runTransaction(db, async (transaction) => {
+        const task = await readTask(transaction, taskId);
+        if (!canRequestApproval(task)) throw new TaskWriteError('approvalChanged');
+        const nowIso = new Date().toISOString();
+        transaction.update(rawTaskReference(taskId), {
+            approval: pendingApprovalOf(approver, actor, nowIso),
+            comments: arrayUnion(buildTaskComment(approvalRequestCommentText(approver.userName), actor, nowIso)),
+        });
+    });
+
+export const cancelApprovalRequest = (taskId: string, actor: TaskActor): Promise<void> =>
+    runTransaction(db, async (transaction) => {
+        const task = await readTask(transaction, taskId);
+        if (!task.approval || !canCancelApprovalRequest(task, actor.userId)) throw new TaskWriteError('approvalChanged');
+        transaction.update(rawTaskReference(taskId), { approval: cancelledApprovalOf(task.approval) });
+    });
+
+export const removeApproval = (taskId: string): Promise<void> =>
+    runTransaction(db, async (transaction) => {
+        const task = await readTask(transaction, taskId);
+        if (!canRemoveApproval(task)) throw new TaskWriteError('approvalChanged');
+        transaction.update(rawTaskReference(taskId), { approval: null });
+    });
+
+export const decideApproval = (taskId: string, decision: ApprovalDecision, note: string, actor: TaskActor): Promise<void> =>
+    runTransaction(db, async (transaction) => {
+        const task = await readTask(transaction, taskId);
+        if (!task.approval || !canDecideApproval(task, actor.userId)) throw new TaskWriteError('approvalChanged');
+        const nowIso = new Date().toISOString();
+        transaction.update(rawTaskReference(taskId), {
+            approval: decidedApprovalOf(task.approval, decision, note, nowIso),
+            comments: arrayUnion(buildTaskComment(approvalDecisionCommentText(decision, note), actor, nowIso)),
+        });
+    });

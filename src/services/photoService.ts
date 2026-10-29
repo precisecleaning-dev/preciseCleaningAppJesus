@@ -1,13 +1,14 @@
-import { arrayUnion, doc, updateDoc } from 'firebase/firestore';
-import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
-import { File } from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
+import { ImageManipulator, SaveFormat, type ImageRef } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
-import { db } from '../config/firebase';
 import type { PhotoConfig, PhotoKind } from '../types';
+import { compressionSettingsOf, lowerQuality, MIN_QUALITY, smallerLongestSide } from '../utils/photoCompression';
 import { uploadToStorage } from './storageService';
 
-const sanitizeForPath = (str: string): string =>
-    (str || '')
+const MAX_LIBRARY_SELECTION = 30;
+
+const sanitizeForPath = (text: string): string =>
+    (text || '')
         .normalize('NFD')
         .replace(/[̀-ͯ]/g, '')
         .replace(/[^a-zA-Z0-9\s_-]/g, '')
@@ -15,97 +16,133 @@ const sanitizeForPath = (str: string): string =>
         .replace(/\s+/g, '_')
         .substring(0, 80) || 'unknown';
 
-let uploadCounter = 0;
+let uploadSequence = 0;
 const uniqueFileName = (prefix: string): string => {
-    const seq = String(uploadCounter++ % 100000).padStart(5, '0');
-    const rand = Math.random().toString(36).slice(2, 8);
-    return `${prefix}_${Date.now()}_${seq}0_${rand}.jpg`;
+    uploadSequence += 1;
+    const sequence = String(uploadSequence % 100000).padStart(5, '0');
+    const random = Math.random().toString(36).slice(2, 8);
+    return `${prefix}_${Date.now()}_${sequence}0_${random}.jpg`;
 };
 
-function storagePathFor(clientName: string, address: string, kind: PhotoKind): string {
+// Contract with the web: {Client}/BeforePhotos|AfterPhotos/{address}_{unique}.jpg
+const storagePathFor = (clientName: string, address: string, kind: PhotoKind): string => {
     const folder = kind === 'before' ? 'BeforePhotos' : 'AfterPhotos';
     return `${sanitizeForPath(clientName)}/${folder}/${uniqueFileName(sanitizeForPath(address))}`;
-}
+};
 
-export function discard(file: File): void {
+export const discard = (file: File): void => {
     try {
         if (file.exists) file.delete();
-    } catch (err) {
-        console.error('No se pudo borrar el archivo temporal:', err);
+    } catch (error) {
+        console.error('Could not delete the temporary file:', error);
     }
-}
+};
 
-export interface PickedPhoto {
-    uri: string;
-    width: number;
-    height: number;
-}
+/** Deletes the copy the picker left in the app cache. Never touches files outside the cache (the user's gallery). */
+export const discardPickerCopy = (photoUri: string): void => {
+    if (photoUri.startsWith(Paths.cache.uri)) discard(new File(photoUri));
+};
 
-export type PickResult = { photos: PickedPhoto[] } | { denied: true };
+export type PhotoSource = 'camera' | 'library';
 
-const toPicked = (res: ImagePicker.ImagePickerResult): PickedPhoto[] => (res.canceled ? [] : res.assets.map((a) => ({ uri: a.uri, width: a.width, height: a.height })));
+export type PickResult = { photoUris: string[] } | { denied: true };
 
-export async function pickPhotos(source: 'camera' | 'library'): Promise<PickResult> {
+const photoUrisOf = (result: ImagePicker.ImagePickerResult): string[] => (result.canceled ? [] : result.assets.map((asset) => asset.uri));
+
+export const pickPhotos = async (source: PhotoSource): Promise<PickResult> => {
     if (source === 'camera') {
-        const perm = await ImagePicker.requestCameraPermissionsAsync();
-        if (!perm.granted) return { denied: true };
-        const res = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 });
-        return { photos: toPicked(res) };
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) return { denied: true };
+        return { photoUris: photoUrisOf(await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 })) };
     }
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return { denied: true };
-    const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsMultipleSelection: true,
-        selectionLimit: 30,
-        quality: 1,
-    });
-    return { photos: toPicked(res) };
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) return { denied: true };
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: MAX_LIBRARY_SELECTION, quality: 1 });
+    return { photoUris: photoUrisOf(result) };
+};
+
+interface SavedPhoto {
+    uri: string;
+    bytes: number;
+    quality: number;
 }
 
-export async function compressPhoto(photo: PickedPhoto, cfg: PhotoConfig): Promise<string> {
-    const ctx = ImageManipulator.manipulate(photo.uri);
-    const longest = Math.max(photo.width, photo.height);
-    if (cfg.maxImageWidth > 0 && longest > cfg.maxImageWidth) {
-        ctx.resize(photo.width >= photo.height ? { width: cfg.maxImageWidth } : { height: cfg.maxImageWidth });
+const saveAsJpeg = async (image: ImageRef, quality: number): Promise<SavedPhoto> => {
+    const { uri } = await image.saveAsync({ compress: quality, format: SaveFormat.JPEG });
+    return { uri, bytes: new File(uri).size, quality };
+};
+
+/** Lowers the JPEG quality step by step until the file fits or the quality reaches its minimum. */
+const saveUnderLimit = async (image: ImageRef, startQuality: number, maxBytes: number): Promise<SavedPhoto> => {
+    let saved = await saveAsJpeg(image, startQuality);
+    while (saved.bytes > maxBytes && saved.quality > MIN_QUALITY) {
+        const heavier = saved;
+        saved = await saveAsJpeg(image, lowerQuality(heavier.quality));
+        discard(new File(heavier.uri));
     }
-    const image = await ctx.renderAsync();
+    return saved;
+};
+
+const saveAtLongestSide = async (original: ImageRef, longestSide: number, startQuality: number, maxBytes: number): Promise<SavedPhoto> => {
+    if (Math.max(original.width, original.height) <= longestSide) return saveUnderLimit(original, startQuality, maxBytes);
+    const context = ImageManipulator.manipulate(original);
+    context.resize(original.width >= original.height ? { width: longestSide } : { height: longestSide });
+    const resized = await context.renderAsync();
     try {
-        const maxBytes = (cfg.maxSizeMB > 0 ? cfg.maxSizeMB : 1) * 1024 * 1024;
-        let quality = Math.min(1, Math.max(0.4, cfg.compressionQuality || 0.85));
-        let saved = await image.saveAsync({ compress: quality, format: SaveFormat.JPEG });
-        while (new File(saved.uri).size > maxBytes && quality > 0.4) {
-            const prev = new File(saved.uri);
-            quality = Math.max(0.4, quality - 0.15);
-            saved = await image.saveAsync({ compress: quality, format: SaveFormat.JPEG });
-            discard(prev);
+        return await saveUnderLimit(resized, startQuality, maxBytes);
+    } finally {
+        resized.release();
+        context.release();
+    }
+};
+
+/**
+ * Resizes and recompresses a photo following app_settings/photo_config (same rules as the web):
+ * longest side ≤ maxImageWidth, JPEG at compressionQuality, lowered until it weighs ≤ maxSizeMB.
+ * If it is still too heavy at the lowest quality, it shrinks the photo further.
+ * The real size is read from the decoded image: the picker may report 0 × 0.
+ */
+export const compressPhoto = async (photoUri: string, photoConfig: PhotoConfig): Promise<string> => {
+    const { maxLongestSide, startQuality, maxBytes } = compressionSettingsOf(photoConfig);
+    const context = ImageManipulator.manipulate(photoUri);
+    const original = await context.renderAsync();
+    try {
+        let longestSide = Math.min(maxLongestSide, Math.max(original.width, original.height));
+        let saved = await saveAtLongestSide(original, longestSide, startQuality, maxBytes);
+        let nextLongestSide = smallerLongestSide(longestSide, saved.bytes, maxBytes);
+        while (nextLongestSide !== null) {
+            const heavier = saved;
+            longestSide = nextLongestSide;
+            saved = await saveAtLongestSide(original, longestSide, heavier.quality, maxBytes);
+            discard(new File(heavier.uri));
+            nextLongestSide = smallerLongestSide(longestSide, saved.bytes, maxBytes);
         }
         return saved.uri;
     } finally {
-        image.release();
-        ctx.release();
+        original.release();
+        context.release();
     }
-}
+};
 
-interface UploadInput {
-    propertyId: string;
+interface PhotoUpload {
     clientName: string;
     address: string;
     kind: PhotoKind;
     fileUri: string;
 }
 
-export async function uploadPhoto(input: UploadInput, onProgress: (pct: number) => void): Promise<void> {
-    const url = await uploadToStorage(input.fileUri, storagePathFor(input.clientName, input.address, input.kind), { contentType: 'image/jpeg', onProgress });
-    await updateDoc(doc(db, 'properties', input.propertyId), { [input.kind === 'before' ? 'beforePhotos' : 'afterPhotos']: arrayUnion(url) });
-}
+/** Uploads the file to Storage and returns its download URL. Linking it to the house is a separate step. */
+export const uploadPhotoFile = ({ clientName, address, kind, fileUri }: PhotoUpload, onProgress: (progress: number) => void): Promise<string> =>
+    uploadToStorage(fileUri, storagePathFor(clientName, address, kind), { contentType: 'image/jpeg', onProgress });
 
-const codeOf = (err: unknown) => String((err as { code?: string })?.code || '');
+export type UploadErrorKind = 'network' | 'permanent' | 'retry';
 
-export function uploadErrorKind(err: unknown): 'network' | 'permanent' | 'retry' {
-    const code = codeOf(err);
-    const msg = String((err as { message?: string })?.message || '').toLowerCase();
-    if (/storage\/(retry-limit-exceeded|canceled)|unavailable|deadline-exceeded/.test(code) || msg.includes('network')) return 'network';
+const errorCodeOf = (error: unknown) => String((error as { code?: string })?.code || '');
+
+export const uploadErrorKind = (error: unknown): UploadErrorKind => {
+    const code = errorCodeOf(error);
+    const message = String((error as { message?: string })?.message || '').toLowerCase();
+    if (/storage\/(retry-limit-exceeded|canceled)|unavailable|deadline-exceeded/.test(code) || message.includes('network')) return 'network';
     if (/storage\/(unauthorized|quota-exceeded)|permission-denied|not-found/.test(code)) return 'permanent';
     return 'retry';
-}
+};
