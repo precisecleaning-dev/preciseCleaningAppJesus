@@ -1,5 +1,28 @@
 # code-notes.md — decisiones y pendientes (app móvil)
 
+## 2026-11-04 · Preparación para App Store y Google Play
+
+- **Hecho:**
+  - quitado el `splash` de primer nivel de `app.json` (error de esquema en SDK 57; el plugin ya lo tenía igual);
+  - **solo iPhone** (`supportsTablet: false`, decisión de Antonio): sin capturas ni revisión en iPad;
+  - sin micrófono: `microphonePermission: false` (Expo lo agregaba con un texto genérico que Apple rechaza);
+  - Android: bloqueados `SYSTEM_ALERT_WINDOW`, `WRITE_EXTERNAL_STORAGE` y `RECORD_AUDIO`. Quedan `INTERNET`,
+    `VIBRATE`, `CAMERA` y `READ_EXTERNAL_STORAGE` (galería en Android viejo). **Probar la galería en un Android.**
+  - `expo` 57.0.31, `expo-constants` 57.0.22, `expo-splash-screen` 57.0.10 (`npx expo install --fix`). Después de
+    eso `package.json` volvió a 4 espacios: el aviso de Prettier de los últimos días era por `expo install`/`expo lint`.
+  - `assets/favicon.png` y `assets/splash-icon.png` borrados (sin uso); el logotipo con nombre pasó a `store/brand/`.
+  - Gráficas en `store/`: `google-play/icon-512.png`, `google-play/feature-graphic-1024x500.png`,
+    `app-store/icon-1024.png`, hechas con el logo actual (decisión de Antonio). El ícono original se ve algo
+    borroso al ampliarlo; si aparece el logo en vector, rehacerlas.
+- **Distribución privada** (no hay cuenta de empresa):
+  - **iOS:** Unlisted App Distribution (se instala solo con el enlace; pasa revisión de Apple). Alternativa:
+    TestFlight (builds vencen a los 90 días; solo para pruebas).
+  - **Android:** canal de prueba cerrada de Play Console con la lista de correos de los empleados (o un grupo de
+    Google). Alternativa: APK directo (sin actualizaciones automáticas).
+- **Pendiente:** `eas init` (falta `projectId`), cuentas de las tiendas, política de privacidad y URL de soporte,
+  formularios de privacidad, capturas de iPhone 6.9" y de teléfono Android, cuenta de prueba para revisores,
+  Security Rules, pruebas en teléfono. Xcode 26.4 solo si se compila iOS en local (EAS compila en la nube).
+
 ## 2026-10-28 · Refactors de revisión (datos de Firestore, Auth, Touchable)
 
 - **Bug arreglado:** el historial de aprobación hacía `comment.text.trim()`; un comentario sin `text` en

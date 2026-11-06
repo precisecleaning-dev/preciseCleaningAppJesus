@@ -7,14 +7,9 @@
         "orientation": "portrait",
         "icon": "./assets/icon.png",
         "userInterfaceStyle": "light",
-        "splash": {
-            "image": "./assets/logo-mark-white.png",
-            "resizeMode": "contain",
-            "backgroundColor": "#1570EF"
-        },
         "ios": {
             "bundleIdentifier": "com.precisecleaningtx.crew",
-            "supportsTablet": true,
+            "supportsTablet": false,
             "infoPlist": {
                 "NSCameraUsageDescription": "Precise Cleaning uses the camera to take Before/After photos of each house.",
                 "NSPhotoLibraryUsageDescription": "Precise Cleaning needs access to your photos to upload Before/After photos of each house.",
@@ -30,6 +25,7 @@
                 "monochromeImage": "./assets/android-icon-monochrome.png"
             },
             "permissions": ["android.permission.CAMERA"],
+            "blockedPermissions": ["android.permission.SYSTEM_ALERT_WINDOW", "android.permission.WRITE_EXTERNAL_STORAGE", "android.permission.RECORD_AUDIO"],
             "predictiveBackGestureEnabled": false
         },
         "plugins": [
@@ -37,7 +33,8 @@
                 "expo-image-picker",
                 {
                     "cameraPermission": "Precise Cleaning uses the camera to take Before/After photos of each house.",
-                    "photosPermission": "Precise Cleaning needs access to your photos to upload Before/After photos of each house."
+                    "photosPermission": "Precise Cleaning needs access to your photos to upload Before/After photos of each house.",
+                    "microphonePermission": false
                 }
             ],
             [

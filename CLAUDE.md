@@ -288,6 +288,17 @@ Finish exige Start + ≥1 foto Before y ≥1 After; solo quien marcó o un admin
 - Probar sin producción: `npm test` en `functions/` (lógica pura) y emuladores con un proyecto `demo-`
   (`firebase emulators:exec --project demo-precise --only functions,firestore ...`).
 
+## Publicación en las tiendas
+
+- **Solo iPhone** (`supportsTablet: false`) y vertical. Splash solo en el plugin `expo-splash-screen` (el `splash`
+  de primer nivel ya no es válido en SDK 57).
+- **Permisos mínimos:** cámara y fotos con su texto en inglés; `microphonePermission: false` en `expo-image-picker`
+  y `android.blockedPermissions` (`SYSTEM_ALERT_WINDOW`, `WRITE_EXTERNAL_STORAGE`, `RECORD_AUDIO`). Una librería
+  nueva puede agregar permisos: revisar con `npx expo config --type introspect` antes de cada versión.
+- Gráficas de las fichas (no entran en la app) en `store/`: ícono 512 y destacada 1024×500 de Google Play, ícono
+  1024 del App Store y el logotipo con nombre.
+- Builds y envío con EAS (`eas.json`, número de build remoto con `autoIncrement`). Lo hace Antonio, nunca Claude.
+
 ## Verificación
 
 ```bash
